@@ -1835,7 +1835,7 @@ select.input { cursor: pointer; }
           <div class="page-title">Agenda</div>
           <div class="page-subtitle">Seus compromissos</div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="openModal('modal-evento')">+ Novo evento</button>
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('ev-data').value=document.getElementById('ev-data').value||ST.hoje;openModal('modal-evento')">+ Novo evento</button>
       </div>
 
       <!-- Semana nav -->
@@ -2379,18 +2379,18 @@ select.input { cursor: pointer; }
       <span class="modal-close" onclick="closeModal(null,'modal-evento')">✕</span>
     </div>
     <div class="modal-body">
-      <div class="field"><label>Título</label><input class="input" placeholder="Nome do evento"></div>
+      <div class="field"><label>Título</label><input class="input" id="ev-titulo" placeholder="Nome do evento"></div>
       <div class="grid-2">
-        <div class="field"><label>Data</label><input class="input" type="date"></div>
-        <div class="field"><label>Horário início</label><input class="input" type="time"></div>
+        <div class="field"><label>Data</label><input class="input" id="ev-data" type="date"></div>
+        <div class="field"><label>Horário início</label><input class="input" id="ev-hi" type="time"></div>
       </div>
-      <div class="field"><label>Horário fim</label><input class="input" type="time"></div>
-      <div class="field"><label>Local / Link (opcional)</label><input class="input" placeholder="Ex: Google Meet, Rua..."></div>
-      <div class="field"><label>Descrição (opcional)</label><textarea class="input" style="min-height:70px" placeholder="Notas sobre o evento"></textarea></div>
+      <div class="field"><label>Horário fim</label><input class="input" id="ev-hf" type="time"></div>
+      <div class="field"><label>Local / Link (opcional)</label><input class="input" id="ev-local" placeholder="Ex: Google Meet, Rua..."></div>
+      <div class="field"><label>Descrição (opcional)</label><textarea class="input" id="ev-desc" style="min-height:70px" placeholder="Notas sobre o evento"></textarea></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal(null,'modal-evento')">Cancelar</button>
-      <button class="btn btn-primary">Criar evento</button>
+      <button class="btn btn-primary" onclick="salvarEvento()">Criar evento</button>
     </div>
   </div>
 </div>
@@ -2699,10 +2699,12 @@ const GCAL = {
   async listarDia(dateStr) {
     return (await this._req(`/calendars/primary/events?timeMin=${dateStr}T00:00:00-03:00&timeMax=${dateStr}T23:59:59-03:00&singleEvents=true&orderBy=startTime`))?.items || [];
   },
-  async criar(titulo, data, hi='', hf='', desc='') {
+  async criar(titulo, data, hi='', hf='', desc='', local='') {
     const start = hi ? { dateTime:`${data}T${hi}:00`, timeZone:'America/Sao_Paulo' } : { date:data };
     const end   = hf ? { dateTime:`${data}T${hf}:00`, timeZone:'America/Sao_Paulo' } : { date:data };
-    return this._req('/calendars/primary/events', { method:'POST', body:JSON.stringify({ summary:titulo, description:desc, start, end }) });
+    const body = { summary:titulo, description:desc, start, end };
+    if (local) body.location = local;
+    return this._req('/calendars/primary/events', { method:'POST', body:JSON.stringify(body) });
   },
   async criarAnual(titulo, data) {
     return this._req('/calendars/primary/events', { method:'POST', body:JSON.stringify({ summary:titulo, start:{ date:data }, end:{ date:data }, recurrence:['RRULE:FREQ=YEARLY'], reminders:{ useDefault:false, overrides:[{ method:'popup', minutes:1440 }] } }) });
@@ -2802,6 +2804,26 @@ const AGENDA = {
     }).join('');
   }
 };
+
+async function salvarEvento() {
+  const titulo = document.getElementById('ev-titulo').value.trim();
+  const data   = document.getElementById('ev-data').value;
+  if (!titulo || !data) { showToast('Título e data são obrigatórios', 'erro'); return; }
+  if (!GCAL.TOKEN) { showToast('Conecte o Google Calendar primeiro', 'erro'); return; }
+  const hi    = document.getElementById('ev-hi').value;
+  const hf    = document.getElementById('ev-hf').value;
+  const local = document.getElementById('ev-local').value.trim();
+  const desc  = document.getElementById('ev-desc').value.trim();
+  const ok = await GCAL.criar(titulo, data, hi, hf, desc, local);
+  if (ok) {
+    showToast('Evento criado!', 'ok');
+    closeModal(null, 'modal-evento');
+    ['ev-titulo','ev-data','ev-hi','ev-hf','ev-local','ev-desc'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    if (AGENDA._selected === data) AGENDA.render(data);
+  } else {
+    showToast('Erro ao criar evento', 'erro');
+  }
+}
 
 function weekPrev() {
   const d = new Date((AGENDA._selected || ST.hoje) + 'T12:00:00');
