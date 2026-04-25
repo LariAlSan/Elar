@@ -1,0 +1,14 @@
+{
+  "name": "Ela",
+  "short_name": "Ela",
+  "description": "Organização e autoconhecimento pessoal feminino",
+  "start_url": "./ela.html",
+  "display": "standalone",
+  "background_color": "#F5F8FB",
+  "theme_color": "#7BA7C2",
+  "orientation": "portrait-primary",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
