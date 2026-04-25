@@ -2300,7 +2300,7 @@ select.input { cursor: pointer; }
             <label>Nome <span style="color:var(--text-muted);font-size:.75rem">(máx. 10 caracteres)</span></label>
             <div style="display:flex;gap:8px;align-items:center">
               <input type="text" id="cfg-name" maxlength="10" placeholder="ELAR" class="cfg-input">
-              <button class="btn btn-p" onclick="CONFIG.saveName()">Salvar</button>
+              <button class="btn btn-primary" onclick="CONFIG.saveName()">Salvar</button>
             </div>
           </div>
           <div class="cfg-row">
@@ -2326,13 +2326,13 @@ select.input { cursor: pointer; }
             <div class="cfg-file-group">
               <div class="cfg-file-label">Exportar</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <button class="btn btn-g" onclick="CONFIG.exportJSON()">⬇️ JSON</button>
+                <button class="btn btn-secondary" onclick="CONFIG.exportJSON()">⬇️ JSON</button>
               </div>
             </div>
             <div class="cfg-file-group">
               <div class="cfg-file-label">Importar</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <button class="btn btn-g" onclick="document.getElementById('imp-json').click()">⬆️ JSON</button>
+                <button class="btn btn-secondary" onclick="document.getElementById('imp-json').click()">⬆️ JSON</button>
                 <input type="file" id="imp-json" accept=".json" style="display:none" onchange="CONFIG.importJSON(this)">
               </div>
             </div>
@@ -2747,7 +2747,8 @@ const AGENDA = {
     const banner = document.getElementById('gcal-connect-banner');
     if (!banner) return;
     banner.style.display = GCAL.TOKEN ? 'none' : '';
-    banner.querySelector('button').onclick = () => GCAL.signIn();
+    const btn = banner.querySelector('button');
+    if (btn) btn.onclick = () => GCAL.signIn();
   },
   _updateLabel() {
     const el = document.getElementById('week-label');
@@ -3199,8 +3200,10 @@ const GFIT = {
   signOut() {
     this.TOKEN = null;
     localStorage.removeItem('ela-gfit-token');
-    document.getElementById('gfit-connect').style.display = '';
-    document.getElementById('gfit-row').style.display = 'none';
+    const gc = document.getElementById('gfit-connect');
+    const gr = document.getElementById('gfit-row');
+    if (gc) gc.style.display = '';
+    if (gr) gr.style.display = 'none';
   },
 
   async _aggregate(dataTypeName, startMs, endMs) {
@@ -3296,8 +3299,10 @@ const GFIT = {
       if (new Date().getHours() >= 11) energiaCard?.classList.add('destaque');
 
       // Mostrar widgets, esconder banner
-      document.getElementById('gfit-connect').style.display = 'none';
-      document.getElementById('gfit-row').style.display     = '';
+      const gc2 = document.getElementById('gfit-connect');
+      const gr2 = document.getElementById('gfit-row');
+      if (gc2) gc2.style.display = 'none';
+      if (gr2) gr2.style.display = '';
     } catch(e) {
       console.warn('GFIT.refresh:', e);
     }
@@ -3764,7 +3769,7 @@ const THEMES = {
   rosa:  { label:'Rosa & Creme',   sidebar:'#C29BAE', accent:'#DEB8CC', bg:'#FBF5F8', text:'#3A1E2D' },
 };
 
-function applyTheme(key, save=false) {
+function applyTheme(key) {
   const t = THEMES[key];
   if (!t) return;
   const s = document.documentElement.style;
@@ -3775,7 +3780,6 @@ function applyTheme(key, save=false) {
   document.querySelectorAll('.cfg-swatch').forEach(el =>
     el.classList.toggle('active', el.dataset.themeKey === key)
   );
-  if (save) { /* STORAGE.save() — a implementar */ }
 }
 
 /* ─── CONFIG ─── */
@@ -3822,10 +3826,10 @@ const CONFIG = {
     if (!el) return;
     const gcalStatus = (typeof GCAL !== 'undefined' && GCAL?.TOKEN)
       ? `<span style="color:var(--success)">✓</span> <strong>Google Calendar</strong> <span style="color:var(--text-muted);font-size:.78rem">conectado</span>`
-      : `<span style="color:var(--text-muted)">Google Calendar</span> <button class="btn btn-g" style="font-size:.75rem;padding:4px 10px" onclick="typeof GCAL!=='undefined'&&GCAL.signIn()">Conectar</button>`;
+      : `<span style="color:var(--text-muted)">Google Calendar</span> <button class="btn btn-ghost btn-sm" onclick="typeof GCAL!=='undefined'&&GCAL.signIn()">Conectar</button>`;
     const gfitStatus = GFIT?.TOKEN
       ? `<span style="color:var(--success)">✓</span> <strong>Google Fit</strong> <span style="color:var(--text-muted);font-size:.78rem">conectado</span>`
-      : `<span style="color:var(--text-muted)">Google Fit / Samsung Health</span> <button class="btn btn-g" style="font-size:.75rem;padding:4px 10px" onclick="GFIT.signIn()">Conectar</button>`;
+      : `<span style="color:var(--text-muted)">Google Fit / Samsung Health</span> <button class="btn btn-ghost btn-sm" onclick="GFIT.signIn()">Conectar</button>`;
     el.innerHTML = `<div class="cfg-conta-row">${gcalStatus}</div><div class="cfg-conta-row">${gfitStatus}</div>`;
   },
 
@@ -3857,14 +3861,15 @@ const CONFIG = {
   },
 
   cancelPreview() {
-    if (this._prevTheme) { applyTheme(this._prevTheme, false); this._prevTheme = null; }
+    if (this._prevTheme) { applyTheme(this._prevTheme); this._prevTheme = null; }
   },
 
   applyAndSave(key) {
     this._prevTheme = null;
     if (!ST.data.config) ST.data.config = {};
     ST.data.config.tema = key;
-    applyTheme(key, true);
+    applyTheme(key);
+    STORAGE.save();
     this._renderThemes(key);
     showToast(`Tema ${THEMES[key].label} aplicado!`, 'ok');
   },
