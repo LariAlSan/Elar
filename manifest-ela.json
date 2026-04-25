@@ -2,7 +2,7 @@
   "name": "ELAR",
   "short_name": "ELAR",
   "description": "Organização e autoconhecimento pessoal feminino",
-  "start_url": "./ela.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#F5F8FB",
   "theme_color": "#7BA7C2",
