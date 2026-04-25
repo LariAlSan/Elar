@@ -194,7 +194,7 @@ ul { list-style: none; }
 .user-name { font-size: .82rem; font-weight: 500; color: var(--text); }
 
 .btn-icon {
-  width: 34px; height: 34px;
+  width: 44px; height: 44px;
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 1rem;
@@ -202,6 +202,7 @@ ul { list-style: none; }
   transition: background var(--transition), color var(--transition);
 }
 .btn-icon:hover { background: var(--bg-card2); color: var(--text); }
+label.required::after { content: ' *'; color: var(--danger); font-size: .72rem; }
 
 /* ── Main ── */
 .main {
@@ -1464,10 +1465,14 @@ select.input { cursor: pointer; }
   .bottom-nav { display: flex; }
   .page { padding: 16px 14px; }
   .humor-grid { gap: 6px; }
-  .humor-card { padding: 14px 8px; min-width: 72px; }
+  .humor-card { padding: 14px 8px; min-width: 72px; min-height: 80px; }
   .humor-emoji { font-size: 1.6rem; }
+  .humor-label { font-size: 0.82rem; }
+  .energia-btn { min-height: 56px; }
+  .ep-chip { min-height: 44px; padding: 8px 10px; }
+  .ciclo-dia { min-height: 38px; }
   .week-days { gap: 3px; }
-  .week-day { padding: 8px 2px; }
+  .week-day { padding: 8px 2px; min-height: 56px; }
   .page-title { font-size: 1.45rem; }
   .toast-container { bottom: calc(var(--bottom-h) + 12px); }
 }
@@ -1478,6 +1483,32 @@ select.input { cursor: pointer; }
   .corpo-grid { grid-template-columns: 1fr 1fr; }
   .humor-card { min-width: 60px; }
 }
+
+/* ─── Confirmação de exclusão ─── */
+.confirm-overlay { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1100;display:flex;align-items:center;justify-content:center;animation:fadeIn .15s; }
+.confirm-box { background:var(--bg-card);border-radius:var(--r);padding:24px;max-width:300px;width:90%;box-shadow:var(--shadow-lg); }
+.confirm-box h3 { font-size:1rem;font-weight:700;margin-bottom:6px; }
+.confirm-box p { font-size:.85rem;color:var(--text-muted);margin-bottom:20px; }
+.confirm-box .btn-row { display:flex;gap:10px;justify-content:flex-end; }
+
+/* ─── Empty state com CTA ─── */
+.empty-state { text-align:center;padding:28px 16px;color:var(--text-muted);font-size:.85rem; }
+.empty-state button { margin-top:12px; }
+
+/* ─── Padrões tab content ─── */
+.padrao-panel { display:none; }
+.padrao-panel.active { display:block; }
+.padrao-bar-row { display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:.82rem; }
+.padrao-bar-label { width:90px;color:var(--text-2);text-overflow:ellipsis;overflow:hidden;white-space:nowrap; }
+.padrao-bar-track { flex:1;height:10px;background:var(--bg-card2);border-radius:99px;overflow:hidden; }
+.padrao-bar-fill { height:100%;background:var(--primary);border-radius:99px;transition:.4s; }
+.padrao-bar-pct { width:32px;text-align:right;color:var(--text-muted); }
+
+/* ─── Prazo de objetivo ─── */
+.prazo-chip { display:inline-flex;align-items:center;gap:4px;font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:99px;margin-top:3px; }
+.prazo-ok { background:var(--success-lt);color:var(--success); }
+.prazo-aviso { background:#FFF3CD;color:#856404; }
+.prazo-vencido { background:#FDECEA;color:var(--danger); }
 
 /* ═══════════════════════════════════════════════
    SCROLL
@@ -2258,29 +2289,49 @@ select.input { cursor: pointer; }
           <div class="padroes-tab" onclick="padraoTab(this,'habitos')">Hábitos</div>
         </div>
 
-        <!-- Calendário de humor -->
-        <div class="card" id="padrao-humor">
-          <div class="card-title">Humor — últimos 30 dias</div>
-          <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:12px;font-size:.72rem;color:var(--text-muted)">
-            <span>☀️ Radiante</span><span>🌸 Bem</span><span>🌤️ Neutra</span><span>🌧️ Pesada</span><span>⛈️ Difícil</span>
+        <!-- Humor -->
+        <div class="padrao-panel active" id="padrao-humor">
+          <div class="card">
+            <div class="card-title">Humor — últimos 30 dias</div>
+            <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:12px;font-size:.72rem;color:var(--text-muted)">
+              <span>☀️ Radiante</span><span>🌸 Bem</span><span>🌤️ Neutra</span><span>🌧️ Pesada</span><span>⛈️ Difícil</span>
+            </div>
+            <div class="humor-calendar" id="humor-cal"></div>
           </div>
-          <div class="humor-calendar" id="humor-cal"></div>
+        </div>
+
+        <!-- Energia -->
+        <div class="padrao-panel" id="padrao-energia">
+          <div class="card">
+            <div class="card-title">Energia — últimos 30 dias</div>
+            <div id="padroes-energia-content"></div>
+          </div>
+        </div>
+
+        <!-- Ciclo -->
+        <div class="padrao-panel" id="padrao-ciclo">
+          <div class="card">
+            <div class="card-title">Resumo do ciclo</div>
+            <div id="padroes-ciclo-content"></div>
+          </div>
+        </div>
+
+        <!-- Hábitos -->
+        <div class="padrao-panel" id="padrao-habitos">
+          <div class="card">
+            <div class="card-title">Consistência dos hábitos — 30 dias</div>
+            <div id="padroes-habitos-content"></div>
+          </div>
         </div>
 
         <!-- Insights de padrão -->
-        <div class="card">
+        <div class="card" id="padrao-insights">
           <div class="card-title">Insights</div>
-          <div class="pattern-insight">
-            <span class="pi-icon">🌙</span>
-            <span class="pi-text">Você costuma se sentir mais <strong>pesada nos dias 20–24 do ciclo</strong> (fase lútea). Isso é completamente normal — seus hormônios estão mudando.</span>
-          </div>
-          <div class="pattern-insight">
-            <span class="pi-icon">⚡</span>
-            <span class="pi-text">Sua energia é <strong>mais alta às terças e quartas</strong>. Considere agendar tarefas mais exigentes nesses dias.</span>
-          </div>
-          <div class="pattern-insight">
-            <span class="pi-icon">😴</span>
-            <span class="pi-text">Quando você dorme <strong>menos de 6h</strong>, seu humor tende a ser mais baixo no dia seguinte em <strong>78% dos registros</strong>.</span>
+          <div id="padroes-insights-content">
+            <div class="pattern-insight">
+              <span class="pi-icon">🌙</span>
+              <span class="pi-text">Registre seu humor, energia e ciclo diariamente para ver insights personalizados aqui.</span>
+            </div>
           </div>
         </div>
 
@@ -2379,9 +2430,9 @@ select.input { cursor: pointer; }
       <span class="modal-close" onclick="closeModal(null,'modal-evento')">✕</span>
     </div>
     <div class="modal-body">
-      <div class="field"><label>Título</label><input class="input" id="ev-titulo" placeholder="Nome do evento"></div>
+      <div class="field"><label class="required">Título</label><input class="input" id="ev-titulo" placeholder="Nome do evento" onkeydown="if(event.key==='Enter')salvarEvento()"></div>
       <div class="grid-2">
-        <div class="field"><label>Data</label><input class="input" id="ev-data" type="date"></div>
+        <div class="field"><label class="required">Data</label><input class="input" id="ev-data" type="date"></div>
         <div class="field"><label>Horário início</label><input class="input" id="ev-hi" type="time"></div>
       </div>
       <div class="field"><label>Horário fim</label><input class="input" id="ev-hf" type="time"></div>
@@ -2403,7 +2454,7 @@ select.input { cursor: pointer; }
       <span class="modal-close" onclick="closeModal(null,'modal-habito')">✕</span>
     </div>
     <div class="modal-body">
-      <div class="field"><label>Nome do hábito</label><input class="input" id="m-habito-nome" placeholder="Ex: Beber água, Meditar..."></div>
+      <div class="field"><label class="required">Nome do hábito</label><input class="input" id="m-habito-nome" placeholder="Ex: Beber água, Meditar..." onkeydown="if(event.key==='Enter')HABITOS.criar()"></div>
       <div class="field">
         <label>Ícone</label>
         <div class="emoji-picker" id="habito-ep">
@@ -2446,7 +2497,7 @@ select.input { cursor: pointer; }
       <span class="modal-close" onclick="closeModal(null,'modal-lista')">✕</span>
     </div>
     <div class="modal-body">
-      <div class="field"><label>Nome da lista</label><input class="input" id="m-lista-nome" placeholder="Ex: Compras, Casa, Trabalho..."></div>
+      <div class="field"><label class="required">Nome da lista</label><input class="input" id="m-lista-nome" placeholder="Ex: Compras, Casa, Trabalho..." onkeydown="if(event.key==='Enter')PRATICO.criarLista()"></div>
       <div class="field">
         <label>Ícone</label>
         <div class="emoji-picker" id="lista-ep">
@@ -2489,7 +2540,7 @@ select.input { cursor: pointer; }
       <span class="modal-close" onclick="closeModal(null,'modal-lembrete')">✕</span>
     </div>
     <div class="modal-body">
-      <div class="field"><label>Lembrete</label><input class="input" id="m-lem-texto" placeholder="Ex: Tomar vitamina..."></div>
+      <div class="field"><label class="required">Lembrete</label><input class="input" id="m-lem-texto" placeholder="Ex: Tomar vitamina..." onkeydown="if(event.key==='Enter')PRATICO.criarLembrete()"></div>
       <div class="field">
         <label>Frequência</label>
         <select class="input" id="m-lem-freq">
@@ -2516,7 +2567,7 @@ select.input { cursor: pointer; }
       <span class="modal-close" onclick="closeModal(null,'modal-vinculo')">✕</span>
     </div>
     <div class="modal-body">
-      <div class="field"><label>Nome</label><input class="input" id="m-vin-nome" placeholder="Nome da pessoa"></div>
+      <div class="field"><label class="required">Nome</label><input class="input" id="m-vin-nome" placeholder="Nome da pessoa" onkeydown="if(event.key==='Enter')VINCULOS.criar()"></div>
       <div class="field">
         <label>Tipo de relação</label>
         <select class="input" id="m-vin-tipo">
@@ -2545,7 +2596,7 @@ select.input { cursor: pointer; }
     </div>
     <div class="modal-body">
       <div class="grid-2">
-        <div class="field"><label>Data de início</label><input class="input" type="date" id="ciclo-inicio"></div>
+        <div class="field"><label class="required">Data de início</label><input class="input" type="date" id="ciclo-inicio"></div>
         <div class="field"><label>Data de fim</label><input class="input" type="date" id="ciclo-fim"></div>
       </div>
       <div class="field">
@@ -2582,7 +2633,7 @@ select.input { cursor: pointer; }
       <span class="modal-close" onclick="closeModal(null,'modal-objetivo')">✕</span>
     </div>
     <div class="modal-body">
-      <div class="field"><label>Título da meta</label><input class="input" id="m-obj-titulo" placeholder="O que você quer alcançar?"></div>
+      <div class="field"><label class="required">Título da meta</label><input class="input" id="m-obj-titulo" placeholder="O que você quer alcançar?" onkeydown="if(event.key==='Enter')OBJETIVOS.criar()"></div>
       <div class="field"><label>Emoji</label><input class="input" id="m-obj-emoji" placeholder="🎯" maxlength="4"></div>
       <div class="field"><label>Data limite</label><input class="input" id="m-obj-prazo" type="month"></div>
       <div class="field"><label>Descrição (opcional)</label><textarea class="input" id="m-obj-desc" style="min-height:70px" placeholder="Contexto, motivação..."></textarea></div>
@@ -2853,6 +2904,106 @@ function weekNext() {
 }
 function weekToday() { AGENDA.render(ST.hoje); }
 
+/* ─── Confirmação de exclusão ─── */
+function confirmarExcluir(cb) {
+  const el = document.createElement('div');
+  el.className = 'confirm-overlay';
+  el.innerHTML = `<div class="confirm-box">
+    <h3>Excluir item?</h3>
+    <p>Esta ação não pode ser desfeita.</p>
+    <div class="btn-row">
+      <button class="btn btn-secondary btn-sm" id="confirm-nao">Cancelar</button>
+      <button class="btn btn-danger btn-sm" id="confirm-sim">Excluir</button>
+    </div>
+  </div>`;
+  document.body.appendChild(el);
+  el.querySelector('#confirm-nao').onclick = () => el.remove();
+  el.querySelector('#confirm-sim').onclick = () => { el.remove(); cb(); };
+  el.onclick = e => { if (e.target === el) el.remove(); };
+}
+
+/* ─── PADROES ─── */
+const PADROES = {
+  _dias(n) {
+    const dias = []; const d = new Date(ST.hoje + 'T12:00:00');
+    for (let i = n - 1; i >= 0; i--) {
+      const dd = new Date(d); dd.setDate(d.getDate() - i);
+      dias.push(dd.toISOString().slice(0, 10));
+    }
+    return dias;
+  },
+  renderEnergia() {
+    const el = document.getElementById('padroes-energia-content'); if (!el) return;
+    const dias = this._dias(30);
+    const CORES = { baixa: '#EF9A9A', media: '#FFD54F', alta: '#A5D6A7' };
+    const LABELS = { baixa: 'Baixa', media: 'Media', alta: 'Alta' };
+    const contagem = { baixa: 0, media: 0, alta: 0 };
+    dias.forEach(d => { const e = ST.data.diarios?.[d]?.energia; if (e) contagem[e] = (contagem[e] || 0) + 1; });
+    const total = Object.values(contagem).reduce((a, b) => a + b, 0);
+    if (!total) { el.innerHTML = '<div class="empty-state">Nenhum registro de energia ainda.<br>Faça o check-in diário para ver seus padrões.</div>'; return; }
+    el.innerHTML = Object.entries(contagem).map(([k, v]) => {
+      const pct = total ? Math.round(v / total * 100) : 0;
+      return `<div class="padrao-bar-row">
+        <span class="padrao-bar-label">${LABELS[k] || k}</span>
+        <div class="padrao-bar-track"><div class="padrao-bar-fill" style="width:${pct}%;background:${CORES[k] || 'var(--primary)'}"></div></div>
+        <span class="padrao-bar-pct">${pct}%</span>
+      </div>`;
+    }).join('') + `<div style="font-size:.75rem;color:var(--text-muted);margin-top:10px">${total} de 30 dias registrados</div>`;
+  },
+  renderCiclo() {
+    const el = document.getElementById('padroes-ciclo-content'); if (!el) return;
+    const ciclos = ST.data.ciclos || [];
+    if (!ciclos.length) { el.innerHTML = '<div class="empty-state">Nenhum ciclo registrado ainda.<br><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-ciclo\')">+ Marcar menstruacao</button></div>'; return; }
+    const todos = ciclos;
+    const medias = todos.slice(1).map((c, i) => Math.round((new Date(c.dataInicio + 'T12:00:00') - new Date(todos[i].dataInicio + 'T12:00:00')) / 86400000));
+    const mediaCiclo = medias.length ? Math.round(medias.reduce((a, b) => a + b, 0) / medias.length) : (ST.data.config?.cicloMedio || 28);
+    const comFim = todos.filter(c => c.dataFim);
+    const mediaDur = comFim.length ? Math.round(comFim.reduce((s, c) => s + Math.round((new Date(c.dataFim + 'T12:00:00') - new Date(c.dataInicio + 'T12:00:00')) / 86400000) + 1, 0) / comFim.length) : (ST.data.config?.duracaoMenstruacao || 5);
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center;margin-bottom:16px">
+        <div><div style="font-size:1.6rem;font-weight:700;color:var(--primary)">${mediaCiclo}</div><div style="font-size:.72rem;color:var(--text-muted)">dias de ciclo</div></div>
+        <div><div style="font-size:1.6rem;font-weight:700;color:var(--success)">${mediaDur}</div><div style="font-size:.72rem;color:var(--text-muted)">dias de periodo</div></div>
+        <div><div style="font-size:1.6rem;font-weight:700;color:var(--text)">${todos.length}</div><div style="font-size:.72rem;color:var(--text-muted)">ciclos registrados</div></div>
+      </div>
+      <div style="font-size:.78rem;color:var(--text-muted)">Padrao: ${medias.length >= 3 && Math.max(...medias) - Math.min(...medias) <= 3 ? 'Regular' : 'Variavel'}</div>`;
+  },
+  renderHabitos() {
+    const el = document.getElementById('padroes-habitos-content'); if (!el) return;
+    const hs = ST.data.habitos || [];
+    if (!hs.length) { el.innerHTML = '<div class="empty-state">Nenhum habito cadastrado ainda.<br><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-habito\')">+ Novo habito</button></div>'; return; }
+    const dias = this._dias(30);
+    el.innerHTML = hs.map(h => {
+      const feitos = dias.filter(d => h.registros?.[d]).length;
+      const pct = Math.round(feitos / 30 * 100);
+      return `<div class="padrao-bar-row">
+        <span class="padrao-bar-label" title="${escHtml(h.nome)}">${h.icone} ${escHtml(h.nome)}</span>
+        <div class="padrao-bar-track"><div class="padrao-bar-fill" style="width:${pct}%"></div></div>
+        <span class="padrao-bar-pct">${pct}%</span>
+      </div>`;
+    }).join('') + `<div style="font-size:.75rem;color:var(--text-muted);margin-top:10px">Ultimos 30 dias</div>`;
+  },
+  renderInsights() {
+    const el = document.getElementById('padroes-insights-content'); if (!el) return;
+    const dias = this._dias(30);
+    const insights = [];
+    const humores = dias.map(d => ST.data.diarios?.[d]?.humor).filter(Boolean);
+    if (humores.length >= 7) {
+      const contagemHumor = {};
+      humores.forEach(h => contagemHumor[h] = (contagemHumor[h] || 0) + 1);
+      const maisFreq = Object.entries(contagemHumor).sort((a, b) => b[1] - a[1])[0];
+      const LABEL = { radiante:'Radiante', bem:'Bem', neutra:'Neutra', pesada:'Pesada', dificil:'Dificil' };
+      insights.push({ icon: '🌙', text: `Seu humor mais frequente nos ultimos 30 dias foi <strong>${LABEL[maisFreq[0]] || maisFreq[0]}</strong> (${maisFreq[1]} dias).` });
+    }
+    const hs = ST.data.habitos || [];
+    if (hs.length) {
+      const melhor = hs.map(h => ({ h, pct: dias.filter(d => h.registros?.[d]).length })).sort((a, b) => b.pct - a.pct)[0];
+      if (melhor?.pct > 0) insights.push({ icon: '💪', text: `Seu habito mais consistente e <strong>${melhor.h.icone} ${escHtml(melhor.h.nome)}</strong> (${Math.round(melhor.pct / 30 * 100)}% de consistencia).` });
+    }
+    if (!insights.length) insights.push({ icon: '📊', text: 'Continue registrando seus dados diariamente para ver insights personalizados aqui.' });
+    el.innerHTML = insights.map(i => `<div class="pattern-insight"><span class="pi-icon">${i.icon}</span><span class="pi-text">${i.text}</span></div>`).join('');
+  }
+};
+
 /* ─── Toast ─── */
 function showToast(msg, tipo='ok') {
   const c = document.getElementById('toast-container');
@@ -2887,6 +3038,7 @@ function nav(id) {
 
   window.scrollTo(0, 0);
   if (id === 'agenda') AGENDA.render();
+  if (id === 'padroes') PADROES.renderInsights();
   localStorage.setItem('ela-page', id);
 }
 
@@ -2912,7 +3064,10 @@ const DARKMODE = {
 
 /* ─── Modais ─── */
 function openModal(id) {
-  document.getElementById(id)?.classList.add('open');
+  const m = document.getElementById(id);
+  if (!m) return;
+  m.querySelectorAll('input:not([type="hidden"]), textarea, select').forEach(el => { el.value = ''; });
+  m.classList.add('open');
   document.body.style.overflow = 'hidden';
 }
 function closeModal(event, idOrEl) {
@@ -2948,6 +3103,12 @@ function toggleSintoma(el) {
 function padraoTab(el, id) {
   document.querySelectorAll('.padroes-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
+  document.querySelectorAll('.padrao-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('padrao-' + id)?.classList.add('active');
+  if (id === 'energia') PADROES.renderEnergia();
+  else if (id === 'ciclo') PADROES.renderCiclo();
+  else if (id === 'habitos') PADROES.renderHabitos();
+  PADROES.renderInsights();
 }
 
 /* ─── Greeting & Date ─── */
@@ -3084,7 +3245,7 @@ const CICLO = {
     const cont = document.getElementById('ciclo-historico-lista');
     if (!cont) return;
     const ciclos = [...(ST.data.ciclos||[])].reverse().slice(0,5);
-    if (!ciclos.length) { cont.innerHTML = '<div style="color:var(--text-muted);font-size:.85rem">Nenhum ciclo registrado.</div>'; return; }
+    if (!ciclos.length) { cont.innerHTML = '<div class="empty-state">Nenhum ciclo registrado ainda.<br>Marque sua menstruacao para comecar a acompanhar.<br><button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="openModal(\'modal-ciclo\')">+ Marcar menstruacao</button></div>'; return; }
     cont.innerHTML = ciclos.map((c,i,arr) => {
       const ini = new Date(c.dataInicio + 'T12:00:00');
       const fim = c.dataFim ? new Date(c.dataFim + 'T12:00:00') : null;
@@ -3364,7 +3525,7 @@ const TAREFAS = {
     const t = ST.data.tarefas?.find(t=>t.id===id); if(!t) return;
     t.concluida=!t.concluida; STORAGE.save(); this.render(); HOME.renderTarefas();
   },
-  excluir(id) { ST.data.tarefas=(ST.data.tarefas||[]).filter(t=>t.id!==id); STORAGE.save(); this.render(); HOME.renderTarefas(); },
+  excluir(id) { confirmarExcluir(() => { ST.data.tarefas=(ST.data.tarefas||[]).filter(t=>t.id!==id); STORAGE.save(); this.render(); HOME.renderTarefas(); }); },
   render() {
     const lista = document.getElementById('tarefa-list'); if (!lista) return;
     const hoje  = (ST.data.tarefas||[]).filter(t=>t.data===ST.hoje);
@@ -3397,7 +3558,7 @@ const HABITOS = {
     if(h.registros[ST.hoje]) delete h.registros[ST.hoje]; else h.registros[ST.hoje]=true;
     STORAGE.save(); this.render(); HOME.renderHabitos();
   },
-  excluir(id) { ST.data.habitos=(ST.data.habitos||[]).filter(h=>h.id!==id); STORAGE.save(); this.render(); },
+  excluir(id) { confirmarExcluir(() => { ST.data.habitos=(ST.data.habitos||[]).filter(h=>h.id!==id); STORAGE.save(); this.render(); }); },
   _streak(h) {
     let n=0; const d=new Date(ST.hoje+'T12:00:00');
     while(h.registros?.[d.toISOString().slice(0,10)]){ n++; d.setDate(d.getDate()-1); } return n;
@@ -3409,13 +3570,13 @@ const HABITOS = {
   render() {
     const grid=document.getElementById('habitos-grid'); if(!grid) return;
     const hs=ST.data.habitos||[];
-    if(!hs.length){ grid.innerHTML='<div style="color:var(--text-muted);font-size:.85rem">Nenhum hábito ainda.</div>'; return; }
+    if(!hs.length){ grid.innerHTML='<div class="empty-state">Nenhum habito cadastrado ainda.<br><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-habito\')">+ Novo habito</button></div>'; return; }
     grid.innerHTML=hs.map(h=>{
       const feito=!!h.registros?.[ST.hoje]; const streak=this._streak(h); const wk=this._semana(h);
       return `<div class="habito-card${feito?' done':''}">
         <div class="hc-check" onclick="HABITOS.toggle(${h.id})">${feito?'✓':''}</div>
         <span class="hc-icon">${h.icone}</span><span class="hc-name">${escHtml(h.nome)}</span>
-        <div class="week-tracker">${wk.map(d=>`<div class="wt-day${d?' done':''}"></div>`).join('')}</div>
+        <div class="week-tracker">${wk.map((d,i)=>{const dt=new Date(ST.hoje+'T12:00:00');dt.setDate(dt.getDate()-6+i);const lbl=dt.toLocaleDateString('pt-BR',{weekday:'short',day:'numeric'});return `<div class="wt-day${d?' done':''}" title="${lbl}${d?' ✓':''}"></div>`;}).join('')}</div>
         ${streak>1?`<span class="hc-streak">${streak} dias 🔥</span>`:feito?'<span class="hc-streak">Feito hoje ✓</span>':''}
         <span class="tr-del" onclick="HABITOS.excluir(${h.id})" style="font-size:.75rem;margin-top:4px">🗑️</span>
       </div>`;
@@ -3569,7 +3730,7 @@ const PRATICO = {
     const it=ST.data.listas?.find(l=>l.id===lid)?.itens?.find(i=>i.id===iid); if(!it) return;
     it.concluido=!it.concluido; STORAGE.save(); this.renderListas();
   },
-  excluirLista(id) { ST.data.listas=(ST.data.listas||[]).filter(l=>l.id!==id); STORAGE.save(); this.renderListas(); },
+  excluirLista(id) { confirmarExcluir(() => { ST.data.listas=(ST.data.listas||[]).filter(l=>l.id!==id); STORAGE.save(); this.renderListas(); }); },
   criarLembrete() {
     const texto=document.getElementById('m-lem-texto')?.value.trim(); if(!texto) return;
     const freq=document.getElementById('m-lem-freq')?.value||'Diário';
@@ -3577,7 +3738,7 @@ const PRATICO = {
     ST.data.lembretes=ST.data.lembretes||[]; ST.data.lembretes.push({ id:Date.now(), texto, frequencia:freq, hora });
     STORAGE.save(); closeModal(null,'modal-lembrete'); document.getElementById('m-lem-texto').value=''; this.renderLembretes();
   },
-  excluirLembrete(id) { ST.data.lembretes=(ST.data.lembretes||[]).filter(l=>l.id!==id); STORAGE.save(); this.renderLembretes(); },
+  excluirLembrete(id) { confirmarExcluir(() => { ST.data.lembretes=(ST.data.lembretes||[]).filter(l=>l.id!==id); STORAGE.save(); this.renderLembretes(); }); },
   renderListas() {
     const cont=document.getElementById('listas-container'); if(!cont) return;
     const ls=ST.data.listas||[];
@@ -3603,7 +3764,7 @@ const PRATICO = {
   renderLembretes() {
     const cont=document.getElementById('lembretes-lista'); if(!cont) return;
     const ls=ST.data.lembretes||[];
-    if(!ls.length){ cont.innerHTML='<div style="color:var(--text-muted);font-size:.85rem">Nenhum lembrete ainda.</div>'; return; }
+    if(!ls.length){ cont.innerHTML='<div class="empty-state">Nenhum lembrete ainda.<br><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-lembrete\')">+ Novo lembrete</button></div>'; return; }
     cont.innerHTML=ls.map(l=>`
       <div class="lembrete-item">
         <span class="lem-icon">🔔</span><span class="lem-text">${escHtml(l.texto)}</span>
@@ -3634,11 +3795,11 @@ const VINCULOS = {
     ['m-vin-nome','m-vin-tipo','m-vin-data','m-vin-desc'].forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
     this.render();
   },
-  excluir(id) { ST.data.relacionamentos=(ST.data.relacionamentos||[]).filter(r=>r.id!==id); STORAGE.save(); this.render(); },
+  excluir(id) { confirmarExcluir(() => { ST.data.relacionamentos=(ST.data.relacionamentos||[]).filter(r=>r.id!==id); STORAGE.save(); this.render(); }); },
   render() {
     const cont=document.getElementById('vinculos-lista'); if(!cont) return;
     const rs=ST.data.relacionamentos||[];
-    if(!rs.length){ cont.innerHTML='<div style="color:var(--text-muted);font-size:.85rem">Nenhum vínculo ainda. Clique em "+ Adicionar".</div>'; return; }
+    if(!rs.length){ cont.innerHTML='<div class="empty-state">Nenhum vinculo ainda.<br><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-vinculo\')">+ Adicionar pessoa</button></div>'; return; }
     cont.innerHTML=rs.map(r=>`
       <div class="vinculo-card card" style="position:relative">
         <div class="vinculo-avatar">${this.AVATAR[r.tipo]||'👤'}</div>
@@ -3675,19 +3836,19 @@ const OBJETIVOS = {
     const o=ST.data.objetivos?.find(o=>o.id===oid), m=o?.marcos?.find(m=>m.id===mid); if(!m) return;
     m.concluido=!m.concluido; this._calcProg(o); STORAGE.save(); this.render();
   },
-  excluir(id) { ST.data.objetivos=(ST.data.objetivos||[]).filter(o=>o.id!==id); STORAGE.save(); this.render(); },
+  excluir(id) { confirmarExcluir(() => { ST.data.objetivos=(ST.data.objetivos||[]).filter(o=>o.id!==id); STORAGE.save(); this.render(); }); },
   _calcProg(o) { o.progresso=o.marcos?.length?Math.round(o.marcos.filter(m=>m.concluido).length/o.marcos.length*100):0; },
   render() {
     const cont=document.getElementById('objetivos-lista'); if(!cont) return;
     const os=ST.data.objetivos||[];
-    if(!os.length){ cont.innerHTML='<div style="color:var(--text-muted);font-size:.85rem">Nenhuma meta ainda. Clique em "+ Meta".</div>'; return; }
+    if(!os.length){ cont.innerHTML='<div class="empty-state">Nenhuma meta ainda.<br><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-objetivo\')">+ Nova meta</button></div>'; return; }
     cont.innerHTML=os.map(o=>`
       <div class="objetivo-card card" style="position:relative">
         <div class="objetivo-header">
           <span class="objetivo-emoji">${o.emoji}</span>
           <div class="objetivo-info">
             <div class="objetivo-titulo">${escHtml(o.titulo)}</div>
-            <div class="objetivo-prazo">${o.dataLimite?'Meta: '+o.dataLimite:''}</div>
+            <div class="objetivo-prazo">${o.dataLimite ? (() => { const dias = Math.round((new Date(o.dataLimite+'-01T12:00:00') - new Date()) / 86400000); const cls = dias < 0 ? 'prazo-vencido' : dias < 30 ? 'prazo-aviso' : 'prazo-ok'; const txt = dias < 0 ? 'Vencida' : dias < 30 ? `${dias} dias` : o.dataLimite; return `<span class="prazo-chip ${cls}">${dias < 0 ? '❌' : dias < 30 ? '⏰' : '📅'} ${txt}</span>`; })() : ''}</div>
           </div>
         </div>
         <div class="objetivo-progresso">
@@ -3928,11 +4089,14 @@ function init() {
   buildHumorCalendar();
   GFIT.init();
   CONFIG.init();
+  PADROES.renderInsights();
   const lastPage = localStorage.getItem('ela-page');
   if (lastPage && PAGES.includes(lastPage) && lastPage !== 'home') nav(lastPage);
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw-ela.js').catch(() => {});
   }
+  let _dataExibida = ST.hoje;
+  setInterval(() => { if (ST.hoje !== _dataExibida) { _dataExibida = ST.hoje; initDate(); TAREFAS.render(); HABITOS.render(); HOME.render(); } }, 60000);
 }
 
 document.addEventListener('DOMContentLoaded', init);
