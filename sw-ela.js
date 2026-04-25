@@ -1,5 +1,5 @@
 const CACHE = 'ela-v1.3';
-const ASSETS = ['./ela.html', './icon.svg', './manifest-ela.json'];
+const ASSETS = ['./ela.html', './icon.png', './manifest-ela.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
