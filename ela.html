@@ -2682,7 +2682,7 @@ const GCAL = {
     if (!window.google) { showToast('Google não carregado','erro'); return; }
     if (!this._client) this._client = google.accounts.oauth2.initTokenClient({
       client_id: this.CLIENT_ID, scope: this.SCOPES,
-      callback: r => { if (r.error) return; this.TOKEN = r.access_token; localStorage.setItem('ela-gcal-token',this.TOKEN); showToast('Google Calendar conectado!','ok'); CONFIG._renderConta(); }
+      callback: r => { if (r.error) return; this.TOKEN = r.access_token; localStorage.setItem('ela-gcal-token',this.TOKEN); showToast('Google Calendar conectado!','ok'); CONFIG._renderConta(); if (document.getElementById('page-agenda')?.classList.contains('active')) AGENDA.render(); }
     });
     this._client.requestAccessToken();
   },
@@ -2696,6 +2696,9 @@ const GCAL = {
   async listarHoje() {
     const t = ST.hoje; return (await this._req(`/calendars/primary/events?timeMin=${t}T00:00:00Z&timeMax=${t}T23:59:59Z&singleEvents=true&orderBy=startTime`))?.items || [];
   },
+  async listarDia(dateStr) {
+    return (await this._req(`/calendars/primary/events?timeMin=${dateStr}T00:00:00-03:00&timeMax=${dateStr}T23:59:59-03:00&singleEvents=true&orderBy=startTime`))?.items || [];
+  },
   async criar(titulo, data, hi='', hf='', desc='') {
     const start = hi ? { dateTime:`${data}T${hi}:00`, timeZone:'America/Sao_Paulo' } : { date:data };
     const end   = hf ? { dateTime:`${data}T${hf}:00`, timeZone:'America/Sao_Paulo' } : { date:data };
@@ -2705,6 +2708,112 @@ const GCAL = {
     return this._req('/calendars/primary/events', { method:'POST', body:JSON.stringify({ summary:titulo, start:{ date:data }, end:{ date:data }, recurrence:['RRULE:FREQ=YEARLY'], reminders:{ useDefault:false, overrides:[{ method:'popup', minutes:1440 }] } }) });
   }
 };
+
+/* ─── AGENDA ─── */
+const AGENDA = {
+  _weekStart: null,
+  _selected: null,
+  _fmt(d) { return d.toISOString().split('T')[0]; },
+  _getMonday(ds) {
+    const dt = new Date(ds + 'T12:00:00');
+    const day = dt.getDay();
+    dt.setDate(dt.getDate() - (day === 0 ? 6 : day - 1));
+    return dt;
+  },
+  render(dateStr) {
+    this._selected = dateStr || ST.hoje;
+    this._weekStart = this._getMonday(this._selected);
+    this._renderBanner();
+    this._renderWeek();
+    this._updateLabel();
+    if (GCAL.TOKEN) this._fetchDay(this._selected);
+    else this._renderTimeline([]);
+  },
+  _renderBanner() {
+    const banner = document.getElementById('gcal-connect-banner');
+    if (!banner) return;
+    banner.style.display = GCAL.TOKEN ? 'none' : '';
+    banner.querySelector('button').onclick = () => GCAL.signIn();
+  },
+  _updateLabel() {
+    const el = document.getElementById('week-label');
+    if (!el) return;
+    const end = new Date(this._weekStart);
+    end.setDate(end.getDate() + 6);
+    const months = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+    const sm = months[this._weekStart.getMonth()], em = months[end.getMonth()];
+    el.textContent = sm === em
+      ? `${this._weekStart.getDate()} – ${end.getDate()} de ${sm}`
+      : `${this._weekStart.getDate()} de ${sm} – ${end.getDate()} de ${em}`;
+  },
+  _renderWeek() {
+    const container = document.getElementById('week-days');
+    if (!container) return;
+    const today = ST.hoje;
+    const NAMES = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
+    container.innerHTML = '';
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(this._weekStart);
+      d.setDate(d.getDate() + i);
+      const ds = this._fmt(d);
+      const div = document.createElement('div');
+      div.className = 'week-day' + (ds === today ? ' today' : '') + (ds === this._selected ? ' selected' : '');
+      div.onclick = () => this.selectDay(ds);
+      div.innerHTML = `<span class="wd-name">${NAMES[d.getDay()]}</span><span class="wd-num">${d.getDate()}</span>`;
+      container.appendChild(div);
+    }
+  },
+  async selectDay(ds) {
+    this._selected = ds;
+    this._renderWeek();
+    if (GCAL.TOKEN) await this._fetchDay(ds);
+  },
+  async _fetchDay(ds) {
+    this._renderTimeline(null);
+    this._renderTimeline(await GCAL.listarDia(ds));
+  },
+  _renderTimeline(events) {
+    const el = document.querySelector('.agenda-timeline');
+    if (!el) return;
+    if (events === null) {
+      el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted)">Carregando...</div>';
+      return;
+    }
+    if (!GCAL.TOKEN) {
+      el.innerHTML = '<div style="text-align:center;padding:40px 16px;color:var(--text-muted)">Conecte o Google Calendar para ver seus eventos.</div>';
+      return;
+    }
+    if (!events.length) {
+      el.innerHTML = '<div style="text-align:center;padding:40px 16px;color:var(--text-muted)">Nenhum evento neste dia.</div>';
+      return;
+    }
+    el.innerHTML = events.map(ev => {
+      const sd = ev.start?.dateTime, ed = ev.end?.dateTime;
+      const time = sd ? sd.slice(11,16) + (ed ? ' – ' + ed.slice(11,16) : '') : 'Dia inteiro';
+      const loc = ev.location ? ` · ${ev.location}` : '';
+      return `<div class="timeline-slot">
+        <span class="timeline-time">${time.split(' – ')[0]}</span>
+        <div class="timeline-line"><div class="timeline-dot" style="background:var(--primary)"></div><div class="timeline-fill"></div></div>
+        <div class="timeline-event">
+          <div class="ev-title">${ev.summary || '(sem título)'}</div>
+          <div class="ev-meta">${time}${loc}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+};
+
+function weekPrev() {
+  const d = new Date((AGENDA._selected || ST.hoje) + 'T12:00:00');
+  d.setDate(d.getDate() - 7);
+  AGENDA.render(AGENDA._fmt(d));
+}
+function weekNext() {
+  const d = new Date((AGENDA._selected || ST.hoje) + 'T12:00:00');
+  d.setDate(d.getDate() + 7);
+  AGENDA.render(AGENDA._fmt(d));
+}
+function weekToday() { AGENDA.render(ST.hoje); }
 
 /* ─── Toast ─── */
 function showToast(msg, tipo='ok') {
@@ -2739,6 +2848,7 @@ function nav(id) {
   });
 
   window.scrollTo(0, 0);
+  if (id === 'agenda') AGENDA.render();
   localStorage.setItem('ela-page', id);
 }
 
@@ -3764,6 +3874,7 @@ function init() {
   OBJETIVOS.render();
   CHECKIN.carregar();
   CICLO.render();
+  AGENDA.render();
   buildHumorCalendar();
   GFIT.init();
   CONFIG.init();
