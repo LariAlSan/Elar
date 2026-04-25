@@ -1,5 +1,5 @@
-const CACHE = 'elar-v1.10';
-const ASSETS = ['./ela.html', './icon.png', './manifest-ela.json'];
+const CACHE = 'elar-v1.11';
+const ASSETS = ['./index.html', './icon.png', './manifest-ela.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
