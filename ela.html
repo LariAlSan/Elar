@@ -2700,8 +2700,20 @@ const GCAL = {
     return (await this._req(`/calendars/primary/events?timeMin=${dateStr}T00:00:00-03:00&timeMax=${dateStr}T23:59:59-03:00&singleEvents=true&orderBy=startTime`))?.items || [];
   },
   async criar(titulo, data, hi='', hf='', desc='', local='') {
-    const start = hi ? { dateTime:`${data}T${hi}:00`, timeZone:'America/Sao_Paulo' } : { date:data };
-    const end   = hf ? { dateTime:`${data}T${hf}:00`, timeZone:'America/Sao_Paulo' } : { date:data };
+    let start, end;
+    if (hi) {
+      if (!hf) {
+        const [h, m] = hi.split(':').map(Number);
+        hf = `${String((h + 1) % 24).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      }
+      start = { dateTime:`${data}T${hi}:00`, timeZone:'America/Sao_Paulo' };
+      end   = { dateTime:`${data}T${hf}:00`, timeZone:'America/Sao_Paulo' };
+    } else {
+      const nextDay = new Date(data + 'T12:00:00');
+      nextDay.setDate(nextDay.getDate() + 1);
+      start = { date: data };
+      end   = { date: nextDay.toISOString().slice(0,10) };
+    }
     const body = { summary:titulo, description:desc, start, end };
     if (local) body.location = local;
     return this._req('/calendars/primary/events', { method:'POST', body:JSON.stringify(body) });
@@ -2820,6 +2832,9 @@ async function salvarEvento() {
     closeModal(null, 'modal-evento');
     ['ev-titulo','ev-data','ev-hi','ev-hf','ev-local','ev-desc'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     if (AGENDA._selected === data) AGENDA.render(data);
+  } else if (!GCAL.TOKEN) {
+    showToast('Sessão expirada. Reconecte o Google Calendar.', 'erro');
+    AGENDA._renderBanner();
   } else {
     showToast('Erro ao criar evento', 'erro');
   }
