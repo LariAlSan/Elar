@@ -1930,7 +1930,7 @@ select.input { cursor: pointer; }
       <div class="page-header page-header-row">
         <div>
           <div class="page-title">Tarefas & Hábitos</div>
-          <div class="page-subtitle">quinta-feira, 24 de abril</div>
+          <div class="page-subtitle" id="tarefas-date">quinta-feira, 24 de abril</div>
         </div>
       </div>
 
@@ -1999,7 +1999,7 @@ select.input { cursor: pointer; }
         <div class="card">
           <div class="card-title">Diário de hoje</div>
           <div class="diario-editor">
-            <div class="diario-date">quinta-feira, 24 de abril de 2026</div>
+            <div class="diario-date" id="bemestar-date">quinta-feira, 24 de abril de 2026</div>
             <textarea placeholder="Escreva o que quiser... pode ser um pensamento, algo que aconteceu, uma reflexão. Isso é só seu."></textarea>
           </div>
           <div style="display:flex;justify-content:flex-end;margin-top:12px">
@@ -2565,7 +2565,7 @@ select.input { cursor: pointer; }
           </button>
         </div>
       </div>
-      <div class="field"><label>Observações (opcional)</label><textarea class="input" style="min-height:70px" placeholder="Cólicas, sintomas, etc."></textarea></div>
+      <div class="field"><label>Observações (opcional)</label><textarea class="input" id="ciclo-obs" style="min-height:70px" placeholder="Cólicas, sintomas, etc."></textarea></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal(null,'modal-ciclo')">Cancelar</button>
@@ -2942,11 +2942,17 @@ function initDate() {
   const greetEl = document.getElementById('greeting');
   if (greetEl) greetEl.textContent = greet + ' ✨';
 
-  const dateEl = document.getElementById('home-date');
-  if (dateEl) {
-    const opts = { weekday:'long', day:'numeric', month:'long' };
-    dateEl.textContent = now.toLocaleDateString('pt-BR', opts);
-  }
+  const shortDate = now.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' });
+  const longDate  = now.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+  const homeDate = document.getElementById('home-date');
+  if (homeDate) homeDate.textContent = shortDate;
+
+  const tarefasDate = document.getElementById('tarefas-date');
+  if (tarefasDate) tarefasDate.textContent = shortDate;
+
+  const bemestarDate = document.getElementById('bemestar-date');
+  if (bemestarDate) bemestarDate.textContent = longDate;
 }
 
 /* ─── Ciclo Menstrual — Calendário ─── */
@@ -3102,9 +3108,11 @@ const CICLO = {
       for (let cur = new Date(d); cur <= f; cur.setDate(cur.getDate()+1))
         registros[cur.toISOString().slice(0,10)] = { fluxo };
     }
-    ST.data.ciclos.push({ id: Date.now(), dataInicio: ini, dataFim: fim||ini, registros });
+    const obs = document.getElementById('ciclo-obs')?.value.trim() || '';
+    ST.data.ciclos.push({ id: Date.now(), dataInicio: ini, dataFim: fim||ini, registros, observacoes: obs });
     ST.data.config.cicloMedio = ST.data.config.cicloMedio || 28;
     STORAGE.save();
+    document.getElementById('ciclo-obs').value = '';
     closeModal(null,'modal-ciclo');
     this.render();
     showToast('Período registrado!','ok');
