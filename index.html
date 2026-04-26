@@ -1051,6 +1051,13 @@ select.input { cursor: pointer; }
   line-height: 1;
   margin-top: 1px;
 }
+.ciclo-dia .ciclo-intimidade {
+  position: absolute;
+  bottom: 2px;
+  right: 3px;
+  font-size: .6rem;
+  line-height: 1;
+}
 
 /* Previsões */
 .ciclo-previsoes { display: flex; flex-direction: column; gap: 12px; }
@@ -1703,36 +1710,19 @@ select.input { cursor: pointer; }
           </div>
         </div>
 
+        <!-- Card espiritual -->
+        <div class="insight-card" id="home-espiritual-card" style="display:none">
+          <div class="insight-icon" id="home-espiritual-icon">🙏</div>
+          <div class="insight-text" id="home-espiritual-text"></div>
+        </div>
+
         <!-- Agenda + Tarefas em grid -->
         <div class="grid-2">
 
           <!-- Agenda do dia -->
           <div class="card">
             <div class="card-title">Hoje na agenda</div>
-            <div class="event-item">
-              <span class="event-time">09:00</span>
-              <span class="event-dot"></span>
-              <div>
-                <div class="event-title">Reunião de planejamento</div>
-                <div class="event-cal">Google Calendar</div>
-              </div>
-            </div>
-            <div class="event-item">
-              <span class="event-time">14:30</span>
-              <span class="event-dot" style="background:var(--success)"></span>
-              <div>
-                <div class="event-title">Academia</div>
-                <div class="event-cal">Google Calendar</div>
-              </div>
-            </div>
-            <div class="event-item">
-              <span class="event-time">20:00</span>
-              <span class="event-dot" style="background:var(--warning)"></span>
-              <div>
-                <div class="event-title">Jantar com a família</div>
-                <div class="event-cal">Google Calendar</div>
-              </div>
-            </div>
+            <div id="home-agenda-lista" style="min-height:40px"></div>
             <button class="btn btn-ghost btn-sm" style="margin-top:14px;width:100%" onclick="nav('agenda')">Ver agenda completa</button>
           </div>
 
@@ -2369,6 +2359,13 @@ select.input { cursor: pointer; }
           <div id="cfg-conta-info" class="cfg-conta-info"></div>
         </div>
         <div class="cfg-card">
+          <div class="cfg-card-title">🙏 Espiritualidade</div>
+          <div class="cfg-row">
+            <label>Orientação espiritual</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px" id="cfg-religiao-grid"></div>
+          </div>
+        </div>
+        <div class="cfg-card">
           <div class="cfg-card-title">💾 Arquivo</div>
           <div class="cfg-arquivo-toggle" onclick="CONFIG.toggleArquivo()">
             <span id="cfg-arq-icon">▸</span> Gerenciar arquivos
@@ -2480,6 +2477,18 @@ select.input { cursor: pointer; }
           <button type="button" class="ep-chip" onclick="selectEmoji('habito-ep','m-habito-icone','💰',this)">💰</button>
         </div>
         <input type="hidden" id="m-habito-icone" value="💧">
+      </div>
+      <div class="field">
+        <label>Dias da semana</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px" id="habito-dias-row">
+          <button type="button" class="ep-chip selected" data-dia="0" onclick="this.classList.toggle('selected')">Dom</button>
+          <button type="button" class="ep-chip selected" data-dia="1" onclick="this.classList.toggle('selected')">Seg</button>
+          <button type="button" class="ep-chip selected" data-dia="2" onclick="this.classList.toggle('selected')">Ter</button>
+          <button type="button" class="ep-chip selected" data-dia="3" onclick="this.classList.toggle('selected')">Qua</button>
+          <button type="button" class="ep-chip selected" data-dia="4" onclick="this.classList.toggle('selected')">Qui</button>
+          <button type="button" class="ep-chip selected" data-dia="5" onclick="this.classList.toggle('selected')">Sex</button>
+          <button type="button" class="ep-chip selected" data-dia="6" onclick="this.classList.toggle('selected')">Sáb</button>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -2596,7 +2605,7 @@ select.input { cursor: pointer; }
     </div>
     <div class="modal-body">
       <div class="grid-2">
-        <div class="field"><label class="required">Data de início</label><input class="input" type="date" id="ciclo-inicio"></div>
+        <div class="field"><label>Data de início</label><input class="input" type="date" id="ciclo-inicio"></div>
         <div class="field"><label>Data de fim</label><input class="input" type="date" id="ciclo-fim"></div>
       </div>
       <div class="field">
@@ -2740,16 +2749,32 @@ const GCAL = {
         showToast('Google Calendar conectado!', 'ok');
         CONFIG._renderConta();
         AGENDA._renderBanner();
+        HOME.renderAgenda();
         if (document.getElementById('page-agenda')?.classList.contains('active')) AGENDA.render();
       }
     });
     this._client.requestAccessToken();
   },
-  signOut() { this.TOKEN = null; localStorage.removeItem('ela-gcal-token'); showToast('Desconectado','ok'); CONFIG._renderConta(); AGENDA._renderBanner(); },
+  silentRefresh() {
+    if (!window.google) return;
+    if (!this._client) this._client = google.accounts.oauth2.initTokenClient({
+      client_id: this.CLIENT_ID, scope: this.SCOPES,
+      callback: r => {
+        if (r.error) return;
+        this.TOKEN = r.access_token;
+        localStorage.setItem('ela-gcal-token', this.TOKEN);
+        AGENDA._renderBanner();
+        HOME.renderAgenda();
+        if (document.getElementById('page-agenda')?.classList.contains('active')) AGENDA.render();
+      }
+    });
+    this._client.requestAccessToken({ prompt: '' });
+  },
+  signOut() { this.TOKEN = null; localStorage.removeItem('ela-gcal-token'); showToast('Desconectado','ok'); CONFIG._renderConta(); AGENDA._renderBanner(); HOME.renderAgenda(); },
   async _req(path, opts={}) {
     if (!this.TOKEN) return null;
     const r = await fetch('https://www.googleapis.com/calendar/v3' + path, { ...opts, headers:{ Authorization:`Bearer ${this.TOKEN}`, 'Content-Type':'application/json', ...(opts.headers||{}) } });
-    if (r.status === 401) { this.TOKEN = null; localStorage.removeItem('ela-gcal-token'); AGENDA._renderBanner(); showToast('Sessão do Google Calendar expirada — reconecte em Configuração','aviso'); return null; }
+    if (r.status === 401) { this.TOKEN = null; localStorage.removeItem('ela-gcal-token'); AGENDA._renderBanner(); this.silentRefresh(); showToast('Sessão do Google Calendar expirada — reconectando...','aviso'); return null; }
     if (!r.ok) { const err = await r.json().catch(()=>({})); showToast(`Erro ${r.status} Google Calendar${err?.error?.message ? ': ' + err.error.message : ''}`, 'erro'); return null; }
     return r.json();
   },
@@ -2964,7 +2989,7 @@ const PADROES = {
     const ciclos = ST.data.ciclos || [];
     if (!ciclos.length) { el.innerHTML = '<div class="empty-state">Nenhum ciclo registrado ainda.<br><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-ciclo\')">+ Marcar menstruacao</button></div>'; return; }
     const todos = ciclos;
-    const medias = todos.slice(1).map((c, i) => Math.round((new Date(c.dataInicio + 'T12:00:00') - new Date(todos[i].dataInicio + 'T12:00:00')) / 86400000));
+    const medias = todos.slice(1).map((c, i) => Math.abs(Math.round((new Date(c.dataInicio + 'T12:00:00') - new Date(todos[i].dataInicio + 'T12:00:00')) / 86400000)));
     const mediaCiclo = medias.length ? Math.round(medias.reduce((a, b) => a + b, 0) / medias.length) : (ST.data.config?.cicloMedio || 28);
     const comFim = todos.filter(c => c.dataFim);
     const mediaDur = comFim.length ? Math.round(comFim.reduce((s, c) => s + Math.round((new Date(c.dataFim + 'T12:00:00') - new Date(c.dataInicio + 'T12:00:00')) / 86400000) + 1, 0) / comFim.length) : (ST.data.config?.duracaoMenstruacao || 5);
@@ -3076,6 +3101,17 @@ function openModal(id) {
   const m = document.getElementById(id);
   if (!m) return;
   m.querySelectorAll('input:not([type="hidden"]), textarea, select').forEach(el => { el.value = ''; });
+  if (id === 'modal-ciclo') {
+    const ini = document.getElementById('ciclo-inicio');
+    if (ini) ini.value = ST.hoje;
+    const dm = ST.data.config?.duracaoMenstruacao || 5;
+    const fimD = new Date(ST.hoje + 'T12:00:00'); fimD.setDate(fimD.getDate() + dm - 1);
+    const fim = document.getElementById('ciclo-fim');
+    if (fim) fim.value = fimD.toISOString().slice(0, 10);
+  }
+  if (id === 'modal-habito') {
+    document.querySelectorAll('#habito-dias-row .ep-chip').forEach(c => c.classList.add('selected'));
+  }
   m.classList.add('open');
   document.body.style.overflow = 'hidden';
 }
@@ -3125,8 +3161,9 @@ function initDate() {
   const now = new Date();
   const h = now.getHours();
   const greet = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const nome = ST.data.config?.nome || 'Lari';
   const greetEl = document.getElementById('greeting');
-  if (greetEl) greetEl.textContent = greet + ' ✨';
+  if (greetEl) greetEl.textContent = greet + ', ' + nome + ' ✨';
 
   const shortDate = now.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' });
   const longDate  = now.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
@@ -3206,7 +3243,8 @@ const CICLO = {
       const fase = fases[key] || '';
       const fl   = fluxo[key] || '';
       const isH  = hojeDate.getDate()===d && hojeDate.getMonth()===this.mes && hojeDate.getFullYear()===this.ano;
-      html += `<div class="ciclo-dia ${fase}${isH?' hoje':''}" title="${key}">${d}${fl?`<span class="ciclo-fluxo">${fl}</span>`:''}</div>`;
+      const sexo = ST.data.diarios?.[key]?.sexo;
+      html += `<div class="ciclo-dia ${fase}${isH?' hoje':''}" title="${key}" onclick="CICLO.toggleIntimidade('${key}')">${d}${fl?`<span class="ciclo-fluxo">${fl}</span>`:''}${sexo?'<span class="ciclo-intimidade">😏</span>':''}</div>`;
     }
     grid.innerHTML = html;
     this._renderPrevisoes(fases);
@@ -3225,49 +3263,73 @@ const CICLO = {
     wrapper.style.display='';
   },
 
+  toggleIntimidade(dateStr) {
+    if (!ST.data.diarios) ST.data.diarios = {};
+    if (!ST.data.diarios[dateStr]) ST.data.diarios[dateStr] = {};
+    ST.data.diarios[dateStr].sexo = !ST.data.diarios[dateStr].sexo;
+    STORAGE.save();
+    this.render();
+  },
   _renderPrevisoes(fases) {
     const ciclos = ST.data.ciclos || [];
     if (!ciclos.length) return;
     const ultimo = ciclos[ciclos.length-1];
     const cm = ST.data.config?.cicloMedio || 28;
-    const ini = new Date(ultimo.dataInicio + 'T12:00:00');
-    const proxMens = new Date(ini.getTime() + cm*86400000);
-    const proxFertilIni = new Date(ini.getTime() + (cm/2-3)*86400000);
-    const proxFertilFim = new Date(ini.getTime() + (cm/2+1)*86400000);
-    const proxOvul = new Date(ini.getTime() + (cm/2)*86400000);
-    const fmt = d => d.toLocaleDateString('pt-BR',{day:'numeric',month:'long'});
-    const diasAte = d => Math.round((d-new Date())/86400000);
+    const ultimoIni = new Date(ultimo.dataInicio + 'T12:00:00');
+    const hoje = new Date();
+    // Projetar ciclos até proxMens ser no futuro
+    let base = new Date(ultimoIni);
+    let proxMens = new Date(base.getTime() + cm * 86400000);
+    while (proxMens < hoje) { base = proxMens; proxMens = new Date(base.getTime() + cm * 86400000); }
+    const proxFertilIni = new Date(base.getTime() + (cm / 2 - 3) * 86400000);
+    const proxFertilFim = new Date(base.getTime() + (cm / 2 + 1) * 86400000);
+    const proxOvul = new Date(base.getTime() + (cm / 2) * 86400000);
+    const fmt = d => d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
+    const diasAte = d => Math.round((d - hoje) / 86400000);
     const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-    el('prev-menstruacao', '~'+fmt(proxMens));
+    el('prev-menstruacao', '~' + fmt(proxMens));
     el('prev-menstruacao-dias', diasAte(proxMens) > 0 ? `em ${diasAte(proxMens)} dias` : 'hoje');
     el('prev-fertil', `${fmt(proxFertilIni)} – ${fmt(proxFertilFim)}`);
     el('prev-fertil-dias', diasAte(proxFertilIni) > 0 ? `em ${diasAte(proxFertilIni)} dias` : 'agora');
     el('prev-ovulacao', fmt(proxOvul));
     el('prev-ovulacao-dias', diasAte(proxOvul) > 0 ? `em ${diasAte(proxOvul)} dias` : 'hoje');
     const sub = document.getElementById('ciclo-subtitle');
-    if (sub) { const dia = Math.round((new Date()-ini)/86400000)+1; sub.textContent = `Ciclo atual: dia ${dia} · ${this._faseNome(fases[ST.hoje])}`; }
+    if (sub) { const dia = Math.round((hoje - ultimoIni) / 86400000) + 1; sub.textContent = `Ciclo atual: dia ${dia} · ${this._faseNome(fases[ST.hoje])}`; }
   },
 
   _faseNome(f) { return { menstrual:'Fase menstrual', folicular:'Fase folicular', ovulacao:'Ovulação', fertil:'Janela fértil', lutea:'Fase lútea' }[f] || 'Fase não registrada'; },
 
-  _renderHistorico() {
-    const cont = document.getElementById('ciclo-historico-lista');
-    if (!cont) return;
-    const ciclos = [...(ST.data.ciclos||[])].reverse().slice(0,5);
-    if (!ciclos.length) { cont.innerHTML = '<div class="empty-state">Nenhum ciclo registrado ainda.<br>Marque sua menstruacao para comecar a acompanhar.<br><button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="openModal(\'modal-ciclo\')">+ Marcar menstruacao</button></div>'; return; }
-    cont.innerHTML = ciclos.map((c,i,arr) => {
+  _renderHistoricoRows(arr) {
+    const fmtS = d => d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}).replace('.','');
+    return arr.map((c,i,a) => {
       const ini = new Date(c.dataInicio + 'T12:00:00');
       const fim = c.dataFim ? new Date(c.dataFim + 'T12:00:00') : null;
       const dur = fim ? Math.round((fim-ini)/86400000)+1 : '?';
-      const prev = arr[i+1] ? Math.round((ini-new Date(arr[i+1].dataInicio+'T12:00:00'))/86400000) : null;
-      const fmtS = d => d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}).replace('.','');
+      const prev = a[i+1] ? Math.round((ini-new Date((a[i+1].dataFim||a[i+1].dataInicio)+'T12:00:00'))/86400000) : null;
       return `<div class="ciclo-historico-row">
         <span>${fmtS(ini)}</span>
         <span>${fim?fmtS(fim):'–'}</span>
         <span class="badge badge-green">${dur} dias</span>
-        <span style="font-size:.8rem;color:var(--text-muted)">${prev?prev+' dias':'–'}</span>
+        <span style="font-size:.8rem;color:var(--text-muted)">${prev!=null?Math.abs(prev)+' dias':'–'}</span>
       </div>`;
     }).join('');
+  },
+  _expandHistorico() {
+    const cont = document.getElementById('ciclo-historico-lista');
+    if (!cont) return;
+    const todos = [...(ST.data.ciclos||[])].reverse();
+    cont.innerHTML = this._renderHistoricoRows(todos);
+  },
+  _renderHistorico() {
+    const cont = document.getElementById('ciclo-historico-lista');
+    if (!cont) return;
+    const todos = [...(ST.data.ciclos||[])].reverse();
+    if (!todos.length) { cont.innerHTML = '<div class="empty-state">Nenhum ciclo registrado ainda.<br>Marque sua menstruacao para comecar a acompanhar.<br><button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="openModal(\'modal-ciclo\')">+ Marcar menstruacao</button></div>'; return; }
+    const ciclos = todos.slice(0, 5);
+    cont.innerHTML = this._renderHistoricoRows(ciclos);
+    if (todos.length > 5) {
+      cont.innerHTML += `<button class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px" onclick="CICLO._expandHistorico()">Ver todos (${todos.length})</button>`;
+    }
     const todos = ST.data.ciclos || [];
     const medias = todos.slice(1).map((c,i) => Math.round((new Date(c.dataInicio+'T12:00:00')-new Date(todos[i].dataInicio+'T12:00:00'))/86400000));
     const mediaCiclo = medias.length ? Math.round(medias.reduce((a,b)=>a+b,0)/medias.length) : ST.data.config?.cicloMedio||28;
@@ -3283,10 +3345,9 @@ const CICLO = {
   },
 
   salvarPeriodo() {
-    const ini   = document.getElementById('ciclo-inicio')?.value;
+    const ini   = document.getElementById('ciclo-inicio')?.value || ST.hoje;
     const fim   = document.getElementById('ciclo-fim')?.value;
     const fluxo = document.querySelector('#modal-ciclo .energia-btn.selected')?.querySelector('span:last-child')?.textContent?.toLowerCase()?.trim() || 'medio';
-    if (!ini) { showToast('Informe a data de início','erro'); return; }
     if (!ST.data.ciclos) ST.data.ciclos = [];
     const registros = {};
     if (ini) {
@@ -3473,9 +3534,24 @@ const GFIT = {
       const gr2 = document.getElementById('gfit-row');
       if (gc2) gc2.style.display = 'none';
       if (gr2) gr2.style.display = '';
+      // Sincronizar com seção Corpo
+      CORPO.syncFromGFit(sono, ativ);
     } catch(e) {
       console.warn('GFIT.refresh:', e);
     }
+  },
+  silentRefresh() {
+    if (!window.google) return;
+    if (!this._client) this._client = google.accounts.oauth2.initTokenClient({
+      client_id: this.CLIENT_ID, scope: this.SCOPES,
+      callback: async (resp) => {
+        if (resp.error) return;
+        this.TOKEN = resp.access_token;
+        localStorage.setItem('ela-gfit-token', this.TOKEN);
+        await this.refresh();
+      }
+    });
+    this._client.requestAccessToken({ prompt: '' });
   }
 };
 
@@ -3492,29 +3568,33 @@ const CHECKIN = {
     STORAGE.save(); HOME.render(); showToast('Check-in salvo! ✓','ok');
   },
   carregar() {
-    const d = ST.data.diarios?.[ST.hoje]; if (!d) return;
+    const d = ST.data.diarios?.[ST.hoje];
     const humorLabels   = ['radiante','bem','neutra','pesada','difícil'];
     const energiaLabels = ['baixa','média','alta'];
     const cicloLabels   = ['menstrual','folicular','ovulação','lútea'];
-    if (d.humor) {
+    if (d?.humor) {
       const idx = humorLabels.indexOf(d.humor);
       if (idx>=0) { document.querySelectorAll('.humor-card').forEach((c,i)=>c.classList.toggle('selected',i===idx)); }
     }
-    if (d.energia) {
+    if (d?.energia) {
       const idx = energiaLabels.indexOf(d.energia);
       if (idx>=0) { document.querySelectorAll('.energia-btn').forEach((b,i)=>b.classList.toggle('selected',i===idx)); }
     }
-    if (d.faseCiclo) {
-      const idx = cicloLabels.indexOf(d.faseCiclo);
+    // Fase: usa dado salvo ou detecta do ciclo automaticamente
+    const NORM = { ovulacao:'ovulação', lutea:'lútea', fertil:'folicular' };
+    const faseAuto = CICLO._computarFases().fases[ST.hoje];
+    const faseUsar = d?.faseCiclo || (faseAuto ? (NORM[faseAuto] || faseAuto) : null);
+    if (faseUsar) {
+      const idx = cicloLabels.indexOf(faseUsar);
       if (idx>=0) { document.querySelectorAll('#page-checkin .ciclo-btn').forEach((b,i)=>b.classList.toggle('selected',i===idx)); }
     }
-    if (d.sintomas?.length) {
+    if (d?.sintomas?.length) {
       document.querySelectorAll('.sintoma-chip').forEach(chip => {
         chip.classList.toggle('selected', d.sintomas.includes(chip.textContent.trim()));
       });
     }
     const ta = document.querySelector('#page-checkin textarea');
-    if (ta && d.diarioTexto) ta.value = d.diarioTexto;
+    if (ta && d?.diarioTexto) ta.value = d.diarioTexto;
   }
 };
 
@@ -3554,8 +3634,9 @@ const HABITOS = {
   criar() {
     const nome  = document.getElementById('m-habito-nome')?.value.trim(); if(!nome) return;
     const icone = document.getElementById('m-habito-icone')?.value.trim()||'⭐';
+    const dias  = [...document.querySelectorAll('#habito-dias-row .ep-chip.selected')].map(c=>parseInt(c.dataset.dia));
     ST.data.habitos=ST.data.habitos||[];
-    ST.data.habitos.push({ id:Date.now(), nome, icone, registros:{} });
+    ST.data.habitos.push({ id:Date.now(), nome, icone, dias:dias.length?dias:[0,1,2,3,4,5,6], registros:{} });
     STORAGE.save(); closeModal(null,'modal-habito');
     document.getElementById('m-habito-nome').value=''; document.getElementById('m-habito-icone').value='💧';
     document.querySelectorAll('#habito-ep .ep-chip').forEach((c,i)=>c.classList.toggle('selected',i===0));
@@ -3580,7 +3661,10 @@ const HABITOS = {
     const grid=document.getElementById('habitos-grid'); if(!grid) return;
     const hs=ST.data.habitos||[];
     if(!hs.length){ grid.innerHTML='<div class="empty-state">Nenhum habito cadastrado ainda.<br><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-habito\')">+ Novo habito</button></div>'; return; }
-    grid.innerHTML=hs.map(h=>{
+    const hojeDia=new Date().getDay();
+    const hsHoje=hs.filter(h=>!h.dias||h.dias.includes(hojeDia));
+    if(!hsHoje.length){ grid.innerHTML='<div class="empty-state">Nenhum habito programado para hoje.</div>'; return; }
+    grid.innerHTML=hsHoje.map(h=>{
       const feito=!!h.registros?.[ST.hoje]; const streak=this._streak(h); const wk=this._semana(h);
       return `<div class="habito-card${feito?' done':''}">
         <div class="hc-check" onclick="HABITOS.toggle(${h.id})">${feito?'✓':''}</div>
@@ -3650,6 +3734,14 @@ const CORPO = {
     if(d?.atividade){ const e=document.getElementById('corpo-atividade'); if(e) e.value=d.atividade; }
     if(d?.peso){ const e=document.getElementById('corpo-peso'); if(e) e.value=d.peso; }
     this.renderHist(); this._renderPeso(); this._renderFase();
+  },
+  syncFromGFit(sleep, activity) {
+    const d = ST.data.corpo?.[ST.hoje] || {};
+    let changed = false;
+    if (!d.sono && sleep?.horas) { d.sono = parseFloat(sleep.horas.toFixed(1)); const e=document.getElementById('corpo-sono'); if(e) e.value=d.sono; changed=true; }
+    if (!d.passos && activity?.passos) { d.passos = activity.passos; const e=document.getElementById('corpo-passos'); if(e) e.value=d.passos; changed=true; }
+    if (!d.atividade && activity?.minutosAtivos) { d.atividade = activity.minutosAtivos; const e=document.getElementById('corpo-atividade'); if(e) e.value=d.atividade; changed=true; }
+    if (changed) { if(!ST.data.corpo) ST.data.corpo={}; ST.data.corpo[ST.hoje]={...d}; STORAGE.save(); this.renderHist(); }
   },
   _renderFase() {
     const el=document.getElementById('corpo-fase-ciclo'); if(!el) return;
@@ -3893,7 +3985,37 @@ const HOME = {
     lutea:'Fase lútea — momento de finalizar tarefas e introspecção. Cuidado com irritação hormonal.',
     lútea:'Fase lútea — momento de finalizar tarefas e introspecção. Cuidado com irritação hormonal.',
   },
-  render() { this.renderEstado(); this.renderTarefas(); this.renderHabitos(); this.renderInsight(); },
+  render() { this.renderEstado(); this.renderTarefas(); this.renderHabitos(); this.renderInsight(); this.renderAgenda(); this.renderEspiritual(); },
+  async renderAgenda() {
+    const cont = document.getElementById('home-agenda-lista'); if (!cont) return;
+    if (!GCAL.TOKEN) { cont.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem">Conecte o Google Calendar para ver seus eventos. <button class="btn btn-ghost btn-sm" onclick="GCAL.signIn()">Conectar</button></div>'; return; }
+    cont.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem">Carregando...</div>';
+    const events = await GCAL.listarDia(ST.hoje);
+    if (!events.length) { cont.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem">Nenhum evento hoje.</div>'; return; }
+    cont.innerHTML = events.slice(0,3).map(ev => {
+      const sd = ev.start?.dateTime; const time = sd ? sd.slice(11,16) : 'Dia inteiro';
+      return `<div class="event-item"><span class="event-time">${time}</span><span class="event-dot"></span><div><div class="event-title">${escHtml(ev.summary||'(sem título)')}</div></div></div>`;
+    }).join('');
+  },
+  renderEspiritual() {
+    const card = document.getElementById('home-espiritual-card'); if (!card) return;
+    const rel = ST.data.config?.religiao; if (!rel) { card.style.display='none'; return; }
+    const MENSAGENS = {
+      catolica: ['Que a paz de Deus, que excede todo entendimento, guarde o teu coração. — Filipenses 4:7','Deus está contigo onde quer que vás. Confie.','Com fé, cada novo dia é uma nova graça.','Maria, cheia de graça — que ela inspire leveza em seu caminhar hoje.','Ore, confie e agradeça. Deus cuida de você.','Que a luz de Deus ilumine o seu caminho hoje e sempre.','Pequenas orações, grandes milagres. Confie.'],
+      evangelica: ['O Senhor é o meu pastor e nada me faltará. — Salmo 23','A alegria do Senhor é a minha força. — Neemias 8:10','Entregue ao Senhor o que te pesa — Ele cuida de você.','Porque Deus não nos deu espírito de covardia, mas de poder, de amor e de equilíbrio. — 2 Timóteo 1:7','Tudo posso naquele que me fortalece. — Filipenses 4:13','A fé move montanhas. A sua fé pode mover o seu dia.','Descanse em Deus. Ele tem o controle.'],
+      espirita: ['O bem que fazemos hoje é a semente do amanhã que colheremos.','Cada dia é uma nova oportunidade de evoluir em amor e sabedoria.','A paz começa de dentro. Cultive-a com pensamentos positivos.','A caridade é o caminho mais curto para a felicidade.','Renove suas energias com amor e gratidão. O universo responde.','Sua jornada é única e sagrada. Confie no seu processo.','Faça o bem sem olhar a quem — a lei do retorno sempre age.'],
+      budista: ['A paz está dentro de você. Respire.','Com cada respiração, comece de novo.','A mente é tudo. O que você pensa, você se torna. — Buda','Solte o que não pode controlar. Flua.','A gratidão transforma o que temos em suficiente.','Seja gentil — com os outros e consigo mesma.','O momento presente é o único que existe. Viva-o plenamente.'],
+      umbanda: ['Que Oxalá ilumine seus passos hoje com paz e clareza.','Com Ogum à frente, nenhum obstáculo é grande demais.','Iemanjá te envolve com a ternura das águas — você é amada.','Que as forças da natureza renovem sua energia hoje.','Axé para o seu dia — que ele venha cheio de força e amor.','Os guias caminham com você. Não está sozinha.','Que a luz dos orixás ilumine sua missão aqui.'],
+      outras: ['A fé te sustenta. Confie no seu caminho.','O universo conspira a seu favor. Abra-se para receber.','Cada dia é sagrado. Viva-o com intenção.','Você é mais forte do que imagina.','Gratidão abre portas que a preocupação fecha.','O que você semeia em amor, colhe em paz.','Confie. O tempo certo chega para quem persiste.'],
+      agnostica: ['Você é suficiente exatamente como é.','Respire fundo — o presente é tudo que você precisa.','Sua intuição é sua bússola mais confiável.','Cuide de você com a mesma gentileza que cuida de quem ama.','Pequenos atos de autocuidado constroem uma vida grande.','Conexão começa de dentro. Como você está, de verdade?','Você não precisa ter tudo resolvido para merecer paz.'],
+    };
+    const frases = MENSAGENS[rel] || MENSAGENS.outras;
+    const ICONS = { catolica:'✝️', evangelica:'✝️', espirita:'🕊️', budista:'☸️', umbanda:'🌿', outras:'🌟', agnostica:'🌸' };
+    const idx = Math.floor((Date.now() / 86400000)) % frases.length;
+    document.getElementById('home-espiritual-icon').textContent = ICONS[rel] || '🙏';
+    document.getElementById('home-espiritual-text').textContent = frases[idx];
+    card.style.display = '';
+  },
   renderEstado() {
     const d=ST.data.diarios?.[ST.hoje]; if(!d?.humor) return;
     const emo=document.querySelector('.estado-humor'); if(emo) emo.textContent=this.HUMOR_EMOJI[d.humor]||'🌤️';
@@ -3964,6 +4086,7 @@ const CONFIG = {
     if (nameEl) nameEl.value = ST.data?.config?.nome || 'Lari';
     this._renderIcons(ST.data?.config?.icone || '🌸');
     this._renderThemes(ST.data?.config?.tema || 'azul');
+    this._renderReligiao(ST.data?.config?.religiao || '');
     this._renderConta();
   },
 
@@ -3991,6 +4114,26 @@ const CONFIG = {
     ).join('');
   },
 
+  _renderReligiao(current) {
+    const g = document.getElementById('cfg-religiao-grid'); if (!g) return;
+    const opts = [
+      { k:'catolica', l:'Católica', i:'✝️' }, { k:'evangelica', l:'Evangélica', i:'✝️' },
+      { k:'espirita', l:'Espírita', i:'🕊️' }, { k:'budista', l:'Budista', i:'☸️' },
+      { k:'umbanda', l:'Umbanda/Candomblé', i:'🌿' }, { k:'outras', l:'Outras religiões', i:'🌟' },
+      { k:'agnostica', l:'Agnóstica/Ateia', i:'🌸' },
+    ];
+    g.innerHTML = opts.map(o =>
+      `<div class="cfg-icon-chip${o.k===current?' active':''}" onclick="CONFIG.selectReligiao('${o.k}')" title="${o.l}">${o.i} ${o.l}</div>`
+    ).join('');
+  },
+  selectReligiao(rel) {
+    if (!ST.data.config) ST.data.config = {};
+    ST.data.config.religiao = rel;
+    STORAGE.save();
+    this._renderReligiao(rel);
+    HOME.renderEspiritual();
+    showToast('Preferência espiritual salva!', 'ok');
+  },
   _renderConta() {
     const el = document.getElementById('cfg-conta-info');
     if (!el) return;
@@ -4022,6 +4165,7 @@ const CONFIG = {
     const nameEl = document.querySelector('.user-name');
     if (nameEl) nameEl.textContent = `Olá, ${v}`;
     STORAGE.save();
+    initDate();
     showToast('Nome atualizado!', 'ok');
   },
 
@@ -4099,6 +4243,11 @@ function init() {
   GFIT.init();
   CONFIG.init();
   PADROES.renderInsights();
+  // Renovação silenciosa de tokens (após 2s para GIS carregar)
+  setTimeout(() => {
+    if (GCAL.TOKEN) GCAL.silentRefresh();
+    if (GFIT.TOKEN) GFIT.silentRefresh();
+  }, 2000);
   const lastPage = localStorage.getItem('ela-page');
   if (lastPage && PAGES.includes(lastPage) && lastPage !== 'home') nav(lastPage);
   if ('serviceWorker' in navigator) {
