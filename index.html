@@ -2750,7 +2750,7 @@ const GCAL = {
     if (!this.TOKEN) return null;
     const r = await fetch('https://www.googleapis.com/calendar/v3' + path, { ...opts, headers:{ Authorization:`Bearer ${this.TOKEN}`, 'Content-Type':'application/json', ...(opts.headers||{}) } });
     if (r.status === 401) { this.TOKEN = null; localStorage.removeItem('ela-gcal-token'); AGENDA._renderBanner(); showToast('Sessão do Google Calendar expirada — reconecte em Configuração','aviso'); return null; }
-    if (!r.ok) { showToast('Erro na API do Google Calendar','erro'); return null; }
+    if (!r.ok) { const err = await r.json().catch(()=>({})); showToast(`Erro ${r.status} Google Calendar${err?.error?.message ? ': ' + err.error.message : ''}`, 'erro'); return null; }
     return r.json();
   },
   async listarHoje() {
