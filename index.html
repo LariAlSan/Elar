@@ -3547,8 +3547,8 @@ const GFIT = {
 
   async getSleep() {
     const now   = new Date();
-    const end   = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const start = end - 86400000;
+    const end   = now.getTime();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 12, 0, 0).getTime();
     const data  = await this._aggregate('com.google.sleep.segment', start, end);
     if (!data) return null;
     let totalMin = 0;
@@ -3831,9 +3831,9 @@ const CORPO = {
   syncFromGFit(sleep, activity) {
     const d = ST.data.corpo?.[ST.hoje] || {};
     let changed = false;
-    if (!d.sono && sleep?.horas) { d.sono = parseFloat(sleep.horas.toFixed(1)); const e=document.getElementById('corpo-sono'); if(e) e.value=d.sono; changed=true; }
-    if (!d.passos && activity?.passos) { d.passos = activity.passos; const e=document.getElementById('corpo-passos'); if(e) e.value=d.passos; changed=true; }
-    if (!d.atividade && activity?.minutosAtivos) { d.atividade = activity.minutosAtivos; const e=document.getElementById('corpo-atividade'); if(e) e.value=d.atividade; changed=true; }
+    if (sleep?.horas) { d.sono = parseFloat(sleep.horas.toFixed(1)); const e=document.getElementById('corpo-sono'); if(e) e.value=d.sono; changed=true; }
+    if (activity?.passos) { d.passos = activity.passos; const e=document.getElementById('corpo-passos'); if(e) e.value=d.passos; changed=true; }
+    if (activity?.minutosAtivos) { d.atividade = activity.minutosAtivos; const e=document.getElementById('corpo-atividade'); if(e) e.value=d.atividade; changed=true; }
     if (changed) { if(!ST.data.corpo) ST.data.corpo={}; ST.data.corpo[ST.hoje]={...d}; STORAGE.save(); this.renderHist(); }
   },
   _renderFase() {
