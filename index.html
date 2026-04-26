@@ -1383,24 +1383,33 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
 }
+.hcal-header {
+  text-align: center;
+  font-size: .62rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 2px 0 4px;
+}
 .hcal-day {
   aspect-ratio: 1;
   border-radius: 6px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: .7rem;
-  font-weight: 500;
+  gap: 1px;
   cursor: pointer;
   transition: transform var(--transition);
 }
-.hcal-day:hover { transform: scale(1.15); }
+.hcal-day:hover { transform: scale(1.1); }
+.hcal-num { font-size: .6rem; font-weight: 600; line-height: 1; opacity: .75; }
+.hcal-emo { font-size: .82rem; line-height: 1; }
 .hcal-day.h-radiante { background: #FFF3CD; color: #8A6F00; }
 .hcal-day.h-bem      { background: #E8F5E9; color: #2E7D4F; }
 .hcal-day.h-neutra   { background: var(--bg-card2); color: var(--text-muted); }
 .hcal-day.h-pesada   { background: #E8EDF5; color: #4A5E82; }
 .hcal-day.h-dificil  { background: #F5E8E8; color: #8B4040; }
-.hcal-day.h-vazio    { background: transparent; color: var(--text-muted); opacity: .4; }
+.hcal-day.h-vazio    { background: var(--bg-card2); opacity: .35; }
 
 /* ═══════════════════════════════════════════════
    MODAL
@@ -3224,7 +3233,8 @@ function padraoTab(el, id) {
   el.classList.add('active');
   document.querySelectorAll('.padrao-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('padrao-' + id)?.classList.add('active');
-  if (id === 'energia') PADROES.renderEnergia();
+  if (id === 'humor') buildHumorCalendar();
+  else if (id === 'energia') PADROES.renderEnergia();
   else if (id === 'ciclo') PADROES.renderCiclo();
   else if (id === 'habitos') PADROES.renderHabitos();
   PADROES.renderInsights();
@@ -3492,18 +3502,38 @@ function selectFluxo(el, val) {
 function buildHumorCalendar() {
   const cal = document.getElementById('humor-cal');
   if (!cal) return;
-  const CLS  = { radiante:'h-radiante', bem:'h-bem', neutra:'h-neutra', pesada:'h-pesada', dificil:'h-dificil', difícil:'h-dificil' };
-  const EMO  = { 'h-radiante':'☀️','h-bem':'🌸','h-neutra':'🌤️','h-pesada':'🌧️','h-dificil':'⛈️' };
-  const now  = new Date(); const totalDias = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  const CLS = { radiante:'h-radiante', bem:'h-bem', neutra:'h-neutra', pesada:'h-pesada', dificil:'h-dificil', difícil:'h-dificil' };
+  const EMO = { 'h-radiante':'☀️','h-bem':'🌸','h-neutra':'🌤️','h-pesada':'🌧️','h-dificil':'⛈️' };
+  const now  = new Date();
+  const year = now.getFullYear(), month = now.getMonth();
+  const totalDias   = new Date(year, month + 1, 0).getDate();
+  const primeiroDia = new Date(year, month, 1).getDay(); // 0=Dom … 6=Sáb
   cal.innerHTML = '';
+
+  // Cabeçalho dos dias da semana
+  ['D','S','T','Q','Q','S','S'].forEach(l => {
+    const h = document.createElement('div');
+    h.className = 'hcal-header';
+    h.textContent = l;
+    cal.appendChild(h);
+  });
+
+  // Células vazias de offset
+  for (let i = 0; i < primeiroDia; i++) {
+    const e = document.createElement('div');
+    e.className = 'hcal-day h-vazio';
+    cal.appendChild(e);
+  }
+
+  // Dias do mês
   for (let d = 1; d <= totalDias; d++) {
-    const key = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const key   = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const humor = ST.data.diarios?.[key]?.humor;
     const cls   = CLS[humor] || 'h-vazio';
     const div   = document.createElement('div');
     div.className = 'hcal-day ' + cls;
-    div.title   = 'Dia ' + d;
-    div.textContent = EMO[cls] || '';
+    div.title     = humor ? `Dia ${d}: ${humor}` : `Dia ${d} — sem registro`;
+    div.innerHTML = `<span class="hcal-num">${d}</span>${humor ? `<span class="hcal-emo">${EMO[cls]}</span>` : ''}`;
     cal.appendChild(div);
   }
 }
