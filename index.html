@@ -3451,9 +3451,9 @@ const CICLO = {
     },0)/todosStats.filter(c=>c.dataFim).length) : ST.data.config?.duracaoMenstruacao||5;
     const statsEl = document.getElementById('ciclo-stats');
     if (statsEl) statsEl.innerHTML = `
-      <div style="text-align:center"><div style="font-size:1.3rem;font-weight:700;color:var(--primary)">${mediaCiclo}</div><div style="font-size:.72rem;color:var(--text-muted)">dias (média)</div></div>
-      <div style="text-align:center"><div style="font-size:1.3rem;font-weight:700;color:var(--success)">${mediaDur||'?'}</div><div style="font-size:.72rem;color:var(--text-muted)">dias menstruação</div></div>
-      <div style="text-align:center"><div style="font-size:1.3rem;font-weight:700;color:var(--text)">${medias.length>=3&&Math.max(...medias)-Math.min(...medias)<=3?'Regular':'Variável'}</div><div style="font-size:.72rem;color:var(--text-muted)">padrão</div></div>`;
+      <div style="flex:1;text-align:center"><div style="font-size:1.3rem;font-weight:700;color:var(--primary)">${mediaCiclo}</div><div style="font-size:.72rem;color:var(--text-muted)">dias (média)</div></div>
+      <div style="flex:1;text-align:center"><div style="font-size:1.3rem;font-weight:700;color:var(--success)">${mediaDur||'?'}</div><div style="font-size:.72rem;color:var(--text-muted)">dias menstruação</div></div>
+      <div style="flex:1;text-align:center"><div style="font-size:1.3rem;font-weight:700;color:var(--text)">${medias.length>=3&&Math.max(...medias)-Math.min(...medias)<=3?'Regular':'Variável'}</div><div style="font-size:.72rem;color:var(--text-muted)">padrão</div></div>`;
   },
 
   salvarPeriodo() {
