@@ -2613,7 +2613,13 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
         </select>
       </div>
       <div class="field"><label>Data importante (opcional)</label><input class="input" id="m-vin-data" type="date"></div>
-      <div class="field"><label>Descrição da data</label><input class="input" id="m-vin-desc" placeholder="Ex: Aniversário, Encontro..."></div>
+      <div class="field">
+        <label>Descrição da data</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span id="m-vin-icone-preview" style="font-size:1.5rem;line-height:1;flex-shrink:0">📅</span>
+          <input class="input" id="m-vin-desc" placeholder="Ex: Aniversário, Encontro..." oninput="document.getElementById('m-vin-icone-preview').textContent=iconePorDescricao(this.value)" style="flex:1">
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal(null,'modal-vinculo')">Cancelar</button>
@@ -3982,6 +3988,31 @@ const PRATICO = {
 };
 
 /* ─── VINCULOS ─── */
+function iconePorDescricao(desc) {
+  const d = (desc || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  if (/aniversar/.test(d))                              return '🎂';
+  if (/casamento|bodas/.test(d))                        return '💍';
+  if (/formatura|graduacao|formacao/.test(d))           return '🎓';
+  if (/natal/.test(d))                                  return '🎄';
+  if (/pascoa/.test(d))                                 return '🐣';
+  if (/ano novo|reveillon|virada/.test(d))              return '🎆';
+  if (/halloween/.test(d))                              return '🎃';
+  if (/dia das maes/.test(d))                           return '👩';
+  if (/dia dos pais/.test(d))                           return '👨';
+  if (/dia dos namorados|valentim/.test(d))             return '❤️';
+  if (/namoro|relacionamento/.test(d))                  return '❤️';
+  if (/viagem|voo|aeroporto|embarque/.test(d))          return '✈️';
+  if (/medico|consulta|dentista|exame|cirurgia|hospital/.test(d)) return '🏥';
+  if (/reuniao/.test(d))                                return '📋';
+  if (/show|concerto|teatro|musical|espetaculo/.test(d)) return '🎭';
+  if (/cinema|filme/.test(d))                           return '🎬';
+  if (/jantar|almoco|restaurante|churrasco/.test(d))    return '🍽️';
+  if (/festa|comemoracao|celebracao/.test(d))           return '🥳';
+  if (/retiro|meditacao|yoga|espiritualidade/.test(d))  return '🧘';
+  if (/entrevista|emprego/.test(d))                     return '💼';
+  return '📅';
+}
+
 const VINCULOS = {
   AVATAR: { familia:'👨‍👩‍👧', amizade:'👫', romantico:'❤️', trabalho:'💼' },
   criar() {
@@ -3989,17 +4020,19 @@ const VINCULOS = {
     const tipo=document.getElementById('m-vin-tipo')?.value||'amizade';
     const data=document.getElementById('m-vin-data')?.value||'';
     const desc=document.getElementById('m-vin-desc')?.value.trim()||'';
-    const datasImportantes=data&&desc?[{ id:Date.now(), data, descricao:desc }]:[];
+    const icone=iconePorDescricao(desc);
+    const datasImportantes=data&&desc?[{ id:Date.now(), data, descricao:desc, icone }]:[];
     ST.data.relacionamentos=ST.data.relacionamentos||[];
     ST.data.relacionamentos.push({ id:Date.now(), nome, tipo, datasImportantes, anotacoes:[] });
     STORAGE.save();
     if(data&&desc&&GCAL.TOKEN){
-      const titulo=`${desc.toLowerCase().includes('aniversário')||desc.toLowerCase().includes('aniversario')?'🎂':'📅'} ${desc} de ${nome}`;
-      if(desc.toLowerCase().includes('aniversário')||desc.toLowerCase().includes('aniversario')) GCAL.criarAnual(titulo,data);
+      const titulo=`${icone} ${desc} de ${nome}`;
+      if(icone==='🎂') GCAL.criarAnual(titulo,data);
       else GCAL.criar(titulo,data);
     }
     closeModal(null,'modal-vinculo');
     ['m-vin-nome','m-vin-tipo','m-vin-data','m-vin-desc'].forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
+    const prev=document.getElementById('m-vin-icone-preview'); if(prev) prev.textContent='📅';
     this.render();
   },
   excluir(id) { confirmarExcluir(() => { ST.data.relacionamentos=(ST.data.relacionamentos||[]).filter(r=>r.id!==id); STORAGE.save(); this.render(); }); },
@@ -4013,7 +4046,7 @@ const VINCULOS = {
         <div class="vinculo-body">
           <div class="vinculo-nome">${escHtml(r.nome)}</div>
           <div class="vinculo-tipo">${r.tipo.charAt(0).toUpperCase()+r.tipo.slice(1)}</div>
-          ${r.datasImportantes?.length?`<div class="vinculo-datas">${r.datasImportantes.map(d=>`<span class="vinculo-data">📅 ${formatarData(d.data)} ${escHtml(d.descricao)}</span>`).join('')}</div>`:''}
+          ${r.datasImportantes?.length?`<div class="vinculo-datas">${r.datasImportantes.map(d=>`<span class="vinculo-data">${d.icone||iconePorDescricao(d.descricao)} ${formatarData(d.data)} ${escHtml(d.descricao)}</span>`).join('')}</div>`:''}
         </div>
         <span class="tr-del" onclick="VINCULOS.excluir(${r.id})" style="position:absolute;top:12px;right:12px">🗑️</span>
       </div>`).join('');
