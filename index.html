@@ -1616,6 +1616,7 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
       <button class="nav-item" onclick="nav('tarefas')">
         <span class="nav-icon">✅</span>
         <span class="nav-label">Tarefas & Hábitos</span>
+        <span class="nav-badge" id="nav-badge-tarefas" style="display:none"></span>
       </button>
 
       <div class="nav-group-label">Bem-estar</div>
@@ -3245,6 +3246,19 @@ function initDate() {
   if (bemestarDate) bemestarDate.textContent = longDate;
 }
 
+function updateNavBadgeTarefas() {
+  const el = document.getElementById('nav-badge-tarefas');
+  if (!el) return;
+  const hojeDia = new Date().getDay();
+  const pendentes = (ST.data.tarefas || []).filter(t => t.data === ST.hoje && !t.concluida).length;
+  const habitosPendentes = (ST.data.habitos || []).filter(h =>
+    (!h.dias || h.dias.includes(hojeDia)) && !h.registros?.[ST.hoje]
+  ).length;
+  const total = pendentes + habitosPendentes;
+  el.textContent = total;
+  el.style.display = total ? '' : 'none';
+}
+
 /* ─── Ciclo Menstrual — Calendário ─── */
 const CICLO_SUGESTOES = {
   menstrual: { icon:'🫐', texto:'Prefira alimentos ricos em ferro e magnésio: espinafre, feijão, chocolate amargo. Um chá de camomila ajuda a aliviar cólicas.' },
@@ -3704,7 +3718,7 @@ const TAREFAS = {
   },
   toggleConcluida(id) {
     const t = ST.data.tarefas?.find(t=>t.id===id); if(!t) return;
-    t.concluida=!t.concluida; STORAGE.save(); this.render(); HOME.renderTarefas();
+    t.concluida=!t.concluida; STORAGE.save(); this.render(); HOME.renderTarefas(); updateNavBadgeTarefas();
   },
   excluir(id) { confirmarExcluir(() => { ST.data.tarefas=(ST.data.tarefas||[]).filter(t=>t.id!==id); STORAGE.save(); this.render(); HOME.renderTarefas(); }); },
   render() {
@@ -3738,7 +3752,7 @@ const HABITOS = {
     const h=ST.data.habitos?.find(h=>h.id===id); if(!h) return;
     if(!h.registros) h.registros={};
     if(h.registros[ST.hoje]) delete h.registros[ST.hoje]; else h.registros[ST.hoje]=true;
-    STORAGE.save(); this.render(); HOME.renderHabitos();
+    STORAGE.save(); this.render(); HOME.renderHabitos(); updateNavBadgeTarefas();
   },
   excluir(id) { confirmarExcluir(() => { ST.data.habitos=(ST.data.habitos||[]).filter(h=>h.id!==id); STORAGE.save(); this.render(); }); },
   _streak(h) {
@@ -4322,6 +4336,7 @@ function init() {
   HOME.render();
   TAREFAS.render();
   HABITOS.render();
+  updateNavBadgeTarefas();
   BEMESTAR.carregar();
   CORPO.carregar();
   PRATICO.renderListas();
