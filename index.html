@@ -3387,7 +3387,7 @@ const GFIT = {
         endTimeMillis: endMs
       })
     });
-    if (!r.ok) { if (r.status === 401) { this.signOut(); showToast('Sessão do Google Fit expirada — reconecte em Configuração','aviso'); } return null; }
+    if (!r.ok) { if (r.status === 401) { this.signOut(); showToast('Sessão do Google Fit expirada — reconecte em Configuração','aviso'); } else { const err = await r.json().catch(()=>({})); showToast(`Erro ${r.status} Google Fit${err?.error?.message ? ': ' + err.error.message : ''}`, 'erro'); } return null; }
     return r.json();
   },
 
