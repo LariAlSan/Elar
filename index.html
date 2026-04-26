@@ -1052,9 +1052,6 @@ select.input { cursor: pointer; }
   margin-top: 1px;
 }
 .ciclo-dia .ciclo-intimidade {
-  position: absolute;
-  bottom: 2px;
-  right: 3px;
   font-size: .6rem;
   line-height: 1;
 }
@@ -1082,7 +1079,7 @@ select.input { cursor: pointer; }
 /* Histórico */
 .ciclo-historico-header {
   display: grid;
-  grid-template-columns: 1fr 1fr 80px 80px;
+  grid-template-columns: 1fr 1fr 80px 80px 32px;
   font-size: .72rem;
   font-weight: 600;
   color: var(--text-muted);
@@ -1094,13 +1091,19 @@ select.input { cursor: pointer; }
 }
 .ciclo-historico-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 80px 80px;
+  grid-template-columns: 1fr 1fr 80px 80px 32px;
   align-items: center;
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
   font-size: .83rem;
 }
 .ciclo-historico-row:last-child { border-bottom: none; }
+.toggle-switch { position:relative; display:inline-block; width:42px; height:24px; flex-shrink:0; }
+.toggle-switch input { opacity:0; width:0; height:0; }
+.toggle-slider { position:absolute; cursor:pointer; inset:0; background:var(--border); border-radius:24px; transition:var(--transition); }
+.toggle-slider::before { content:''; position:absolute; height:18px; width:18px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:var(--transition); }
+input:checked + .toggle-slider { background:var(--primary); }
+input:checked + .toggle-slider::before { transform:translateX(18px); }
 
 /* ═══════════════════════════════════════════════
    PAGE: CORPO
@@ -2103,7 +2106,7 @@ select.input { cursor: pointer; }
         <div class="card">
           <div class="card-title">Histórico de ciclos</div>
           <div class="ciclo-historico-header">
-            <span>Início</span><span>Fim</span><span>Duração</span><span>Ciclo</span>
+            <span>Início</span><span>Fim</span><span>Duração</span><span>Ciclo</span><span></span>
           </div>
           <div id="ciclo-historico-lista">
             <div class="ciclo-historico-row">
@@ -2630,6 +2633,33 @@ select.input { cursor: pointer; }
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal(null,'modal-ciclo')">Cancelar</button>
       <button class="btn btn-primary" onclick="CICLO.salvarPeriodo()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Detalhe do dia do ciclo -->
+<div class="modal-overlay" id="modal-dia-ciclo" onclick="closeModal(event,this)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-dia-titulo">📅 Dia</span>
+      <span class="modal-close" onclick="closeModal(null,'modal-dia-ciclo')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="field" style="display:flex;align-items:center;justify-content:space-between;padding:4px 0">
+        <label style="margin:0;font-weight:500">😏 Intimidade</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="dia-sexo">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="field">
+        <label>Comentário (opcional)</label>
+        <textarea class="input" id="dia-comentario" style="min-height:80px" placeholder="Como foi esse dia?"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal(null,'modal-dia-ciclo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="CICLO._salvarDia()">Salvar</button>
     </div>
   </div>
 </div>
@@ -3259,7 +3289,7 @@ const CICLO = {
       const fl   = fluxo[key] || '';
       const isH  = hojeDate.getDate()===d && hojeDate.getMonth()===this.mes && hojeDate.getFullYear()===this.ano;
       const sexo = ST.data.diarios?.[key]?.sexo;
-      html += `<div class="ciclo-dia ${fase}${isH?' hoje':''}" title="${key}" onclick="CICLO.toggleIntimidade('${key}')">${d}${fl?`<span class="ciclo-fluxo">${fl}</span>`:''}${sexo?'<span class="ciclo-intimidade">😏</span>':''}</div>`;
+      html += `<div class="ciclo-dia ${fase}${isH?' hoje':''}" title="${key}" onclick="CICLO._abrirDia('${key}')">${d}${fl?`<span class="ciclo-fluxo">${fl}</span>`:''}${sexo?'<span class="ciclo-intimidade">😏</span>':''}</div>`;
     }
     grid.innerHTML = html;
     this._renderPrevisoes(fases);
@@ -3278,12 +3308,36 @@ const CICLO = {
     wrapper.style.display='';
   },
 
-  toggleIntimidade(dateStr) {
+  _diaSelecionado: null,
+  _abrirDia(dateStr) {
+    this._diaSelecionado = dateStr;
+    openModal('modal-dia-ciclo');
+    const d = ST.data.diarios?.[dateStr] || {};
+    const dt = new Date(dateStr + 'T12:00:00');
+    const fmtDate = dt.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+    document.getElementById('modal-dia-titulo').textContent = '📅 ' + fmtDate;
+    document.getElementById('dia-sexo').checked = !!d.sexo;
+    document.getElementById('dia-comentario').value = d.comentario || '';
+  },
+  _salvarDia() {
+    const dateStr = this._diaSelecionado;
+    if (!dateStr) return;
     if (!ST.data.diarios) ST.data.diarios = {};
     if (!ST.data.diarios[dateStr]) ST.data.diarios[dateStr] = {};
-    ST.data.diarios[dateStr].sexo = !ST.data.diarios[dateStr].sexo;
+    ST.data.diarios[dateStr].sexo = document.getElementById('dia-sexo').checked;
+    ST.data.diarios[dateStr].comentario = document.getElementById('dia-comentario').value.trim();
     STORAGE.save();
+    closeModal(null, 'modal-dia-ciclo');
     this.render();
+    showToast('Dia salvo!', 'ok');
+  },
+  excluir(id) {
+    confirmarExcluir(() => {
+      ST.data.ciclos = (ST.data.ciclos || []).filter(c => c.id !== id);
+      STORAGE.save();
+      this.render();
+      showToast('Ciclo removido', 'ok');
+    });
   },
   _renderPrevisoes(fases) {
     const ciclos = ST.data.ciclos || [];
@@ -3326,6 +3380,7 @@ const CICLO = {
         <span>${fim?fmtS(fim):'–'}</span>
         <span class="badge badge-green">${dur} dias</span>
         <span style="font-size:.8rem;color:var(--text-muted)">${prev!=null?Math.abs(prev)+' dias':'–'}</span>
+        <span class="tr-del" onclick="CICLO.excluir(${c.id})" title="Excluir ciclo">🗑️</span>
       </div>`;
     }).join('');
   },
