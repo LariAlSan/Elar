@@ -2700,12 +2700,27 @@ const DEF = {
 const ST = { get hoje(){ return hoje(); }, data: JSON.parse(JSON.stringify(DEF)) };
 
 /* ─── STORAGE (localStorage) ─── */
+function deepMerge(def, stored) {
+  const out = JSON.parse(JSON.stringify(def));
+  for (const k of Object.keys(stored)) {
+    if (
+      out[k] !== null && typeof out[k] === 'object' && !Array.isArray(out[k]) &&
+      stored[k] !== null && typeof stored[k] === 'object' && !Array.isArray(stored[k])
+    ) {
+      out[k] = deepMerge(out[k], stored[k]);
+    } else {
+      out[k] = stored[k];
+    }
+  }
+  return out;
+}
+
 const STORAGE = {
   KEY: 'ela-data',
   load() {
     try {
       const raw = localStorage.getItem(this.KEY);
-      if (raw) ST.data = Object.assign(JSON.parse(JSON.stringify(DEF)), JSON.parse(raw));
+      if (raw) ST.data = deepMerge(DEF, JSON.parse(raw));
     } catch(e) { console.warn('STORAGE.load:', e); }
   },
   save() {
@@ -2724,7 +2739,7 @@ const STORAGE = {
     if (!file) return;
     const r = new FileReader();
     r.onload = e => {
-      try { ST.data = Object.assign(JSON.parse(JSON.stringify(DEF)), JSON.parse(e.target.result)); STORAGE.save(); location.reload(); }
+      try { ST.data = deepMerge(DEF, JSON.parse(e.target.result)); STORAGE.save(); location.reload(); }
       catch { showToast('Arquivo inválido','erro'); }
     };
     r.readAsText(file);
