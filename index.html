@@ -2662,13 +2662,13 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
 <!-- Modal: Detalhe do dia do ciclo -->
 <div class="modal-overlay" id="modal-dia-ciclo" onclick="closeModal(event,this)">
   <div class="modal">
-    <div class="modal-header">
+    <div class="modal-header" style="padding:14px 20px 12px">
       <span class="modal-title" id="modal-dia-titulo">📅 Dia</span>
       <span class="modal-close" onclick="closeModal(null,'modal-dia-ciclo')">✕</span>
     </div>
-    <div class="modal-body">
-      <div class="field" style="display:flex;align-items:center;justify-content:space-between;padding:4px 0">
-        <label style="margin:0;font-weight:500">😏 Intimidade</label>
+    <div class="modal-body" style="padding:14px 20px;gap:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <label style="margin:0;font-weight:500;font-size:.9rem">🔥 Sexo</label>
         <label class="toggle-switch">
           <input type="checkbox" id="dia-sexo">
           <span class="toggle-slider"></span>
@@ -2676,10 +2676,10 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
       </div>
       <div class="field">
         <label>Comentário (opcional)</label>
-        <textarea class="input" id="dia-comentario" style="min-height:80px" placeholder="Como foi esse dia?"></textarea>
+        <textarea class="input" id="dia-comentario" style="min-height:56px;resize:none" placeholder="Como foi esse dia?"></textarea>
       </div>
     </div>
-    <div class="modal-footer">
+    <div class="modal-footer" style="padding:12px 20px">
       <button class="btn btn-secondary" onclick="closeModal(null,'modal-dia-ciclo')">Cancelar</button>
       <button class="btn btn-primary" onclick="CICLO._salvarDia()">Salvar</button>
     </div>
@@ -3311,7 +3311,7 @@ const CICLO = {
       const fl   = fluxo[key] || '';
       const isH  = hojeDate.getDate()===d && hojeDate.getMonth()===this.mes && hojeDate.getFullYear()===this.ano;
       const sexo = ST.data.diarios?.[key]?.sexo;
-      html += `<div class="ciclo-dia ${fase}${isH?' hoje':''}" title="${key}" onclick="CICLO._abrirDia('${key}')">${d}${fl?`<span class="ciclo-fluxo">${fl}</span>`:''}${sexo?'<span class="ciclo-intimidade">😏</span>':''}</div>`;
+      html += `<div class="ciclo-dia ${fase}${isH?' hoje':''}" title="${key}" onclick="CICLO._abrirDia('${key}')">${d}${fl?`<span class="ciclo-fluxo">${fl}</span>`:''}${sexo?'<span class="ciclo-intimidade">🔥</span>':''}</div>`;
     }
     grid.innerHTML = html;
     this._renderPrevisoes(fases);
