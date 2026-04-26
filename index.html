@@ -2730,19 +2730,28 @@ const GCAL = {
   SCOPES:'https://www.googleapis.com/auth/calendar.events',
   init() { const s = localStorage.getItem('ela-gcal-token'); if (s) this.TOKEN = s; },
   signIn() {
-    if (!window.google) { showToast('Google não carregado','erro'); return; }
+    if (!window.google) { showToast('Google não carregado — aguarde e tente novamente','erro'); return; }
     if (!this._client) this._client = google.accounts.oauth2.initTokenClient({
       client_id: this.CLIENT_ID, scope: this.SCOPES,
-      callback: r => { if (r.error) return; this.TOKEN = r.access_token; localStorage.setItem('ela-gcal-token',this.TOKEN); showToast('Google Calendar conectado!','ok'); CONFIG._renderConta(); if (document.getElementById('page-agenda')?.classList.contains('active')) AGENDA.render(); }
+      callback: r => {
+        if (r.error) { if (r.error !== 'popup_closed_by_user') showToast('Erro ao conectar Google Calendar: ' + r.error, 'erro'); return; }
+        this.TOKEN = r.access_token;
+        localStorage.setItem('ela-gcal-token', this.TOKEN);
+        showToast('Google Calendar conectado!', 'ok');
+        CONFIG._renderConta();
+        AGENDA._renderBanner();
+        if (document.getElementById('page-agenda')?.classList.contains('active')) AGENDA.render();
+      }
     });
     this._client.requestAccessToken();
   },
-  signOut() { this.TOKEN = null; localStorage.removeItem('ela-gcal-token'); showToast('Desconectado','ok'); CONFIG._renderConta(); },
+  signOut() { this.TOKEN = null; localStorage.removeItem('ela-gcal-token'); showToast('Desconectado','ok'); CONFIG._renderConta(); AGENDA._renderBanner(); },
   async _req(path, opts={}) {
     if (!this.TOKEN) return null;
     const r = await fetch('https://www.googleapis.com/calendar/v3' + path, { ...opts, headers:{ Authorization:`Bearer ${this.TOKEN}`, 'Content-Type':'application/json', ...(opts.headers||{}) } });
-    if (r.status===401) { this.TOKEN = null; localStorage.removeItem('ela-gcal-token'); return null; }
-    return r.ok ? r.json() : null;
+    if (r.status === 401) { this.TOKEN = null; localStorage.removeItem('ela-gcal-token'); AGENDA._renderBanner(); showToast('Sessão do Google Calendar expirada — reconecte em Configuração','aviso'); return null; }
+    if (!r.ok) { showToast('Erro na API do Google Calendar','erro'); return null; }
+    return r.json();
   },
   async listarHoje() {
     const t = ST.hoje; return (await this._req(`/calendars/primary/events?timeMin=${t}T00:00:00Z&timeMax=${t}T23:59:59Z&singleEvents=true&orderBy=startTime`))?.items || [];
@@ -3342,13 +3351,13 @@ const GFIT = {
   },
 
   signIn() {
-    if (!window.google) { alert('Google Identity Services não carregado.'); return; }
+    if (!window.google) { showToast('Google não carregado — aguarde e tente novamente','erro'); return; }
     if (!this._client) {
       this._client = google.accounts.oauth2.initTokenClient({
         client_id: this.CLIENT_ID,
         scope: this.SCOPES,
         callback: async (resp) => {
-          if (resp.error) return;
+          if (resp.error) { if (resp.error !== 'popup_closed_by_user') showToast('Erro ao conectar Google Fit: ' + resp.error, 'erro'); return; }
           this.TOKEN = resp.access_token;
           localStorage.setItem('ela-gfit-token', this.TOKEN);
           await this.refresh();
@@ -3378,7 +3387,7 @@ const GFIT = {
         endTimeMillis: endMs
       })
     });
-    if (!r.ok) { if (r.status === 401) this.signOut(); return null; }
+    if (!r.ok) { if (r.status === 401) { this.signOut(); showToast('Sessão do Google Fit expirada — reconecte em Configuração','aviso'); } return null; }
     return r.json();
   },
 
