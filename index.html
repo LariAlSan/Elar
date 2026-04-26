@@ -3330,13 +3330,13 @@ const CICLO = {
     if (todos.length > 5) {
       cont.innerHTML += `<button class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px" onclick="CICLO._expandHistorico()">Ver todos (${todos.length})</button>`;
     }
-    const todos = ST.data.ciclos || [];
-    const medias = todos.slice(1).map((c,i) => Math.round((new Date(c.dataInicio+'T12:00:00')-new Date(todos[i].dataInicio+'T12:00:00'))/86400000));
+    const todosStats = ST.data.ciclos || [];
+    const medias = todosStats.slice(1).map((c,i) => Math.abs(Math.round((new Date(c.dataInicio+'T12:00:00')-new Date(todosStats[i].dataInicio+'T12:00:00'))/86400000)));
     const mediaCiclo = medias.length ? Math.round(medias.reduce((a,b)=>a+b,0)/medias.length) : ST.data.config?.cicloMedio||28;
-    const mediaDur = todos.length ? Math.round(todos.filter(c=>c.dataFim).reduce((s,c)=>{
+    const mediaDur = todosStats.length ? Math.round(todosStats.filter(c=>c.dataFim).reduce((s,c)=>{
       const ini=new Date(c.dataInicio+'T12:00:00'), fim=new Date(c.dataFim+'T12:00:00');
       return s+Math.round((fim-ini)/86400000)+1;
-    },0)/todos.filter(c=>c.dataFim).length) : ST.data.config?.duracaoMenstruacao||5;
+    },0)/todosStats.filter(c=>c.dataFim).length) : ST.data.config?.duracaoMenstruacao||5;
     const statsEl = document.getElementById('ciclo-stats');
     if (statsEl) statsEl.innerHTML = `
       <div style="text-align:center"><div style="font-size:1.3rem;font-weight:700;color:var(--primary)">${mediaCiclo}</div><div style="font-size:.72rem;color:var(--text-muted)">dias (média)</div></div>
