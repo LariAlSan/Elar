@@ -871,12 +871,34 @@ select.input { cursor: pointer; }
 .tarefa-row .tr-text { flex: 1; font-size: .88rem; }
 .tarefa-row .tr-text.done { text-decoration: line-through; color: var(--text-muted); }
 .tarefa-row .tr-badge { }
+.tr-del {
+  position: relative;
+  cursor: pointer;
+}
+.tr-del::after {
+  content: 'Excluir';
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: var(--bg-base);
+  font-size: .68rem;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition);
+  z-index: 200;
+}
+.tr-del:hover::after { opacity: 1; }
 .tarefa-row .tr-del {
   opacity: 0;
   font-size: .9rem;
   color: var(--text-muted);
   transition: opacity var(--transition);
-  cursor: pointer;
 }
 .tarefa-row:hover .tr-del { opacity: 1; }
 
