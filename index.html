@@ -316,7 +316,7 @@ label.required::after { content: ' *'; color: var(--danger); font-size: .72rem; 
   border: none;
 }
 .btn-primary { background: var(--primary); color: #fff; }
-.btn-primary:hover { background: var(--primary-dk); box-shadow: 0 2px 12px rgba(123,167,194,.35); }
+.btn-primary:hover { background: var(--primary-dk); box-shadow: var(--shadow-md); }
 .btn-secondary { background: var(--bg-card2); color: var(--text); border: 1px solid var(--border); }
 .btn-secondary:hover { background: var(--accent-lt); border-color: var(--accent); }
 .btn-ghost { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); }
@@ -341,7 +341,7 @@ label.required::after { content: ' *'; color: var(--danger); font-size: .72rem; 
 }
 .input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(123,167,194,.18);
+  box-shadow: 0 0 0 3px var(--accent-lt);
 }
 textarea.input { min-height: 100px; resize: vertical; }
 select.input { cursor: pointer; }
@@ -455,7 +455,7 @@ select.input { cursor: pointer; }
   padding: 22px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(123,167,194,.3);
+  box-shadow: var(--shadow-md);
 }
 .estado-card::after {
   content: '';
@@ -665,7 +665,7 @@ select.input { cursor: pointer; }
   transition: all var(--transition);
 }
 .humor-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow); }
-.humor-card.selected { border-color: var(--primary); background: var(--accent-lt); box-shadow: 0 0 0 3px rgba(123,167,194,.15); }
+.humor-card.selected { border-color: var(--primary); background: var(--accent-lt); box-shadow: 0 0 0 3px var(--accent-lt); }
 .humor-emoji { font-size: 2rem; }
 .humor-label { font-size: .75rem; font-weight: 500; color: var(--text-2); text-align: center; }
 .humor-card.selected .humor-label { color: var(--primary-dk); }
@@ -4222,20 +4222,65 @@ const HOME = {
 
 /* ─── Temas ─── */
 const THEMES = {
-  azul:  { label:'Azul & Pérola',  sidebar:'#7BA7C2', accent:'#A8C5DA', bg:'#F5F8FB', text:'#1E2D3A' },
-  lilas: { label:'Lilás & Névoa',  sidebar:'#9B8EC4', accent:'#C5B8E8', bg:'#F7F5FB', text:'#2D1E3A' },
-  verde: { label:'Verde & Marfim', sidebar:'#7BA89B', accent:'#A8C8C0', bg:'#F5FBF8', text:'#1E3A2D' },
-  rosa:  { label:'Rosa & Creme',   sidebar:'#C29BAE', accent:'#DEB8CC', bg:'#FBF5F8', text:'#3A1E2D' },
+  azul: {
+    label:'Azul & Pérola',
+    primary:'#7BA7C2', primaryDk:'#5A8BAA', primaryL:'#E8F1F8',
+    accent:'#A8C5DA',  accentLt:'#D6E9F3',
+    bg:'#F5F8FB',      bgCard2:'#EEF4F9',
+    text:'#1E2D3A',    text2:'#3D5266',    textMuted:'#7A96AB',
+    border:'#DDE8F0',
+    shadow:'0 2px 16px rgba(123,167,194,.10)',
+    shadowMd:'0 4px 24px rgba(123,167,194,.15)',
+  },
+  lilas: {
+    label:'Lilás & Névoa',
+    primary:'#9B8EC4', primaryDk:'#7B6EA8', primaryL:'#F0EDF9',
+    accent:'#C5B8E8',  accentLt:'#E8E3F5',
+    bg:'#F7F5FB',      bgCard2:'#EEE9F7',
+    text:'#2D1E3A',    text2:'#503D66',    textMuted:'#8A7AAB',
+    border:'#E0DBF0',
+    shadow:'0 2px 16px rgba(155,142,196,.10)',
+    shadowMd:'0 4px 24px rgba(155,142,196,.15)',
+  },
+  verde: {
+    label:'Verde & Marfim',
+    primary:'#7BA89B', primaryDk:'#5A8A7C', primaryL:'#E8F2F0',
+    accent:'#A8C8C0',  accentLt:'#D6EDE8',
+    bg:'#F5FBF8',      bgCard2:'#EEF7F3',
+    text:'#1E3A2D',    text2:'#3D6650',    textMuted:'#7A9B8A',
+    border:'#DDE8E4',
+    shadow:'0 2px 16px rgba(123,168,155,.10)',
+    shadowMd:'0 4px 24px rgba(123,168,155,.15)',
+  },
+  rosa: {
+    label:'Rosa & Creme',
+    primary:'#C29BAE', primaryDk:'#A87A96', primaryL:'#F7EEF3',
+    accent:'#DEB8CC',  accentLt:'#F0DCE8',
+    bg:'#FBF5F8',      bgCard2:'#F5EEF3',
+    text:'#3A1E2D',    text2:'#663D50',    textMuted:'#AB7A96',
+    border:'#EEE0EA',
+    shadow:'0 2px 16px rgba(194,155,174,.10)',
+    shadowMd:'0 4px 24px rgba(194,155,174,.15)',
+  },
 };
 
 function applyTheme(key) {
   const t = THEMES[key];
   if (!t) return;
   const s = document.documentElement.style;
-  s.setProperty('--primary', t.sidebar);
-  s.setProperty('--accent',  t.accent);
-  s.setProperty('--bg-base', t.bg);
-  s.setProperty('--text',    t.text);
+  s.setProperty('--primary',    t.primary);
+  s.setProperty('--primary-dk', t.primaryDk);
+  s.setProperty('--primary-l',  t.primaryL);
+  s.setProperty('--accent',     t.accent);
+  s.setProperty('--accent-lt',  t.accentLt);
+  s.setProperty('--bg-base',    t.bg);
+  s.setProperty('--bg-card2',   t.bgCard2);
+  s.setProperty('--text',       t.text);
+  s.setProperty('--text-2',     t.text2);
+  s.setProperty('--text-muted', t.textMuted);
+  s.setProperty('--border',     t.border);
+  s.setProperty('--shadow',     t.shadow);
+  s.setProperty('--shadow-md',  t.shadowMd);
   document.querySelectorAll('.cfg-swatch').forEach(el =>
     el.classList.toggle('active', el.dataset.themeKey === key)
   );
@@ -4273,7 +4318,7 @@ const CONFIG = {
         onmouseenter="CONFIG.previewTheme('${key}')"
         onmouseleave="CONFIG.cancelPreview()"
         onclick="CONFIG.applyAndSave('${key}')">
-        <div class="cfg-swatch-preview" style="background:${t.sidebar}">
+        <div class="cfg-swatch-preview" style="background:${t.primary}">
           <div class="cfg-swatch-dot" style="background:${t.accent}"></div>
         </div>
         <div class="cfg-swatch-name">${t.label}</div>
