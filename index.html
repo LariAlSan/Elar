@@ -3566,20 +3566,45 @@ const GFIT = {
 
   async getSleep() {
     const now   = new Date();
-    const end   = now.getTime();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 12, 0, 0).getTime();
-    const data  = await this._aggregate('com.google.sleep.segment', start, end);
-    if (!data) return null;
+    const end   = now;
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 12, 0, 0);
     let totalMin = 0;
-    (data.bucket || []).forEach(b =>
-      (b.dataset || []).forEach(ds =>
-        (ds.point || []).forEach(p => {
-          const s = parseInt(p.startTimeNanos) / 1e6;
-          const e = parseInt(p.endTimeNanos) / 1e6;
-          totalMin += (e - s) / 60000;
-        })
-      )
+
+    // Sessions API — Samsung Health sincroniza sono como sessão (activityType 72/109/110/111)
+    const SLEEP_TYPES = new Set([72, 109, 110, 111]);
+    const r = await fetch(
+      `https://www.googleapis.com/fitness/v1/users/me/sessions?startTime=${start.toISOString()}&endTime=${end.toISOString()}`,
+      { headers: { Authorization: 'Bearer ' + this.TOKEN } }
     );
+    if (!r.ok) {
+      if (r.status === 401) { this.signOut(); showToast('Sessão do Google Fit expirada — reconecte em Configuração', 'aviso'); }
+      else { const err = await r.json().catch(() => ({})); showToast(`Erro ${r.status} Google Fit${err?.error?.message ? ': ' + err.error.message : ''}`, 'erro'); }
+      return null;
+    }
+    const sessions = await r.json();
+    (sessions.session || []).forEach(s => {
+      if (!SLEEP_TYPES.has(s.activityType)) return;
+      const dur = (Number(s.endTimeMillis) - Number(s.startTimeMillis)) / 60000;
+      if (dur > 0) totalMin += dur;
+    });
+
+    // Fallback: Aggregate API (caso o app registre sono diretamente no GFit)
+    if (totalMin === 0) {
+      const data = await this._aggregate('com.google.sleep.segment', start.getTime(), end.getTime());
+      if (data) {
+        (data.bucket || []).forEach(b =>
+          (b.dataset || []).forEach(ds =>
+            (ds.point || []).forEach(p => {
+              const s = Number(p.startTimeNanos) / 1e6;
+              const e = Number(p.endTimeNanos)   / 1e6;
+              totalMin += (e - s) / 60000;
+            })
+          )
+        );
+      }
+    }
+
+    if (totalMin === 0) return null;
     const horas = totalMin / 60;
     const h = Math.floor(horas);
     const m = Math.round((horas - h) * 60);
