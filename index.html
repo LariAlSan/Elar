@@ -4177,7 +4177,10 @@ const HOME = {
     const cont=document.getElementById('home-habitos-lista'); if(!cont) return;
     const hs=ST.data.habitos||[];
     if(!hs.length){ cont.innerHTML='<div style="color:var(--text-muted);font-size:.82rem">Nenhum hábito ainda</div>'; return; }
-    cont.innerHTML=hs.slice(0,3).map(h=>{
+    const hojeDia=new Date().getDay();
+    const hsHoje=hs.filter(h=>!h.dias||h.dias.includes(hojeDia));
+    if(!hsHoje.length){ cont.innerHTML='<div style="color:var(--text-muted);font-size:.82rem">Nenhum hábito para hoje</div>'; return; }
+    cont.innerHTML=hsHoje.slice(0,3).map(h=>{
       const feito=!!h.registros?.[ST.hoje];
       return `<div class="habito-item">
         <span class="habito-icon">${h.icone}</span><span class="habito-label">${escHtml(h.nome)}</span>
