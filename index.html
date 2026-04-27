@@ -262,14 +262,14 @@ label.required::after { content: ' *'; color: var(--danger); font-size: .72rem; 
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 8px 12px;
+  padding: 6px 8px;
   border-radius: var(--r-sm);
   cursor: pointer;
   color: var(--text-muted);
-  font-size: .65rem;
+  font-size: .6rem;
   font-weight: 500;
   transition: color var(--transition);
-  min-width: 56px;
+  min-width: 44px;
 }
 .bottom-nav-item .bn-icon { font-size: 1.3rem; line-height: 1; }
 .bottom-nav-item.active { color: var(--primary); }
@@ -1043,11 +1043,10 @@ select.input { cursor: pointer; }
 .ciclo-dia.ovulacao  { background: #FFF9C4; color: #F57F17; }
 .ciclo-dia.lutea     { background: #EDE7F6; color: #4527A0; }
 .ciclo-dia.fertil    { outline: 1.5px dashed #F57F17; }
-.ciclo-dia .ciclo-fluxo {
-  font-size: .82rem;
-  line-height: 1;
-  margin-top: 1px;
-}
+.ciclo-dia .ciclo-fluxo { line-height: 1; margin-top: 1px; }
+.fl-leve   { font-size: .55rem; color: #F48FB1; }
+.fl-medio  { font-size: .7rem;  color: #E07090; }
+.fl-intenso{ font-size: .85rem; color: #C0304A; }
 .ciclo-dia .ciclo-intimidade {
   font-size: .9rem;
   line-height: 1;
@@ -1227,6 +1226,18 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
 .lembrete-item .lem-icon { font-size: 1.1rem; }
 .lembrete-item .lem-text { flex: 1; font-size: .85rem; }
 .lembrete-item .lem-freq { font-size: .72rem; color: var(--text-muted); }
+
+/* Ciclo de Produtos — modal campos opcionais */
+.field-group-optional { border: none; padding: 0; margin: 0; }
+.field-group-optional summary {
+  cursor: pointer; list-style: none;
+  font-size: .82rem; color: var(--primary);
+  padding: 8px 0 4px; font-weight: 500;
+  display: flex; align-items: center; gap: 4px;
+}
+.field-group-optional summary::after { content: '▾'; font-size: .7rem; }
+.field-group-optional[open] summary::after { content: '▴'; }
+.field-group-optional summary::-webkit-details-marker { display: none; }
 
 /* Ciclo de Produtos */
 .prod-item {
@@ -2408,6 +2419,10 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
       <span class="bn-icon">✅</span>
       <span>Tarefas</span>
     </div>
+    <div class="bottom-nav-item" onclick="nav('ciclo')">
+      <span class="bn-icon">🔴</span>
+      <span>Ciclo</span>
+    </div>
     <div class="bottom-nav-item" onclick="nav('mais')">
       <span class="bn-icon">☰</span>
       <span>Mais</span>
@@ -2431,7 +2446,7 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
         <div class="field"><label class="required">Data</label><input class="input" id="ev-data" type="date"></div>
         <div class="field"><label>Horário início</label><input class="input" id="ev-hi" type="time"></div>
       </div>
-      <div class="field"><label>Horário fim</label><input class="input" id="ev-hf" type="time"></div>
+      <div class="field"><label>Horário fim <span style="font-weight:400;color:var(--text-muted)">(opcional — calculado automaticamente)</span></label><input class="input" id="ev-hf" type="time"></div>
       <div class="field"><label>Local / Link (opcional)</label><input class="input" id="ev-local" placeholder="Ex: Google Meet, Rua..."></div>
       <div class="field"><label>Descrição (opcional)</label><textarea class="input" id="ev-desc" style="min-height:70px" placeholder="Notas sobre o evento"></textarea></div>
     </div>
@@ -2478,7 +2493,7 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
         <input type="hidden" id="m-habito-icone" value="💧">
       </div>
       <div class="field">
-        <label>Dias da semana</label>
+        <label>Dias da semana <small style="font-weight:400;color:var(--text-muted)">— toque para ativar/desativar</small></label>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px" id="habito-dias-row">
           <button type="button" class="ep-chip selected" data-dia="0" onclick="this.classList.toggle('selected')">Dom</button>
           <button type="button" class="ep-chip selected" data-dia="1" onclick="this.classList.toggle('selected')">Seg</button>
@@ -2589,23 +2604,29 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
           <option value="Outro">Outro</option>
         </select>
       </div>
-      <div class="field"><label>Marca <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-marca" placeholder="Ex: Neutrogena, Himalaya..."></div>
       <div class="field"><label>Data de validade <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-validade" type="date"></div>
-      <div class="field"><label>Data de abertura <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-abertura" type="date"></div>
-      <div class="field"><label>Duração estimada em dias <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-duracao" type="number" min="1" placeholder="Ex: 30"></div>
-      <div class="field"><label>Notificar com <b id="m-prod-days-label">7</b> dias de antecedência</label><input class="input" id="m-prod-notify" type="range" min="1" max="30" value="7" oninput="document.getElementById('m-prod-days-label').textContent=this.value"></div>
-      <div class="field">
-        <label>Importância</label>
-        <select class="input" id="m-prod-importancia">
-          <option value="baixa">Baixa</option>
-          <option value="media" selected>Média</option>
-          <option value="alta">Alta</option>
-        </select>
+      <div class="field"><label>Notificar com <b id="m-prod-days-label">7</b> dias de antecedência</label>
+        <input class="input" id="m-prod-notify" type="range" min="1" max="30" value="7" oninput="document.getElementById('m-prod-days-label').textContent=this.value">
+        <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--text-muted);margin-top:2px"><span>1 dia</span><span>30 dias</span></div>
       </div>
-      <div class="field" style="flex-direction:row;align-items:center;gap:10px">
-        <input type="checkbox" id="m-prod-reposicao" style="width:16px;height:16px;accent-color:var(--primary)">
-        <label for="m-prod-reposicao" style="margin:0;font-weight:400">Reposição automática</label>
-      </div>
+      <details class="field-group-optional">
+        <summary>Mais detalhes</summary>
+        <div class="field"><label>Marca <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-marca" placeholder="Ex: Neutrogena, Himalaya..."></div>
+        <div class="field"><label>Data de abertura <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-abertura" type="date"></div>
+        <div class="field"><label>Duração estimada em dias <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-duracao" type="number" min="1" placeholder="Ex: 30"></div>
+        <div class="field">
+          <label>Importância</label>
+          <select class="input" id="m-prod-importancia">
+            <option value="baixa">Baixa</option>
+            <option value="media" selected>Média</option>
+            <option value="alta">Alta</option>
+          </select>
+        </div>
+        <div class="field" style="flex-direction:row;align-items:center;gap:10px">
+          <input type="checkbox" id="m-prod-reposicao" style="width:16px;height:16px;accent-color:var(--primary)">
+          <label for="m-prod-reposicao" style="margin:0;font-weight:400">Reposição automática</label>
+        </div>
+      </details>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal(null,'modal-produto')">Cancelar</button>
@@ -2742,7 +2763,6 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
     </div>
     <div class="modal-body" style="gap:8px">
       <button class="nav-item" style="width:100%" onclick="closeAndNav('bemestar')"><span class="nav-icon">💜</span><span class="nav-label">Bem-Estar</span></button>
-      <button class="nav-item" style="width:100%" onclick="closeAndNav('ciclo')"><span class="nav-icon">🔴</span><span class="nav-label">Ciclo Menstrual</span></button>
       <button class="nav-item" style="width:100%" onclick="closeAndNav('corpo')"><span class="nav-icon">🌿</span><span class="nav-label">Corpo</span></button>
       <button class="nav-item" style="width:100%" onclick="closeAndNav('pratico')"><span class="nav-icon">📋</span><span class="nav-label">Vida Prática</span></button>
       <button class="nav-item" style="width:100%" onclick="closeAndNav('vinculos')"><span class="nav-icon">🤝</span><span class="nav-label">Vínculos</span></button>
@@ -3386,6 +3406,7 @@ function openModal(id) {
   }
   if (id === 'modal-habito') {
     document.querySelectorAll('#habito-dias-row .ep-chip').forEach(c => c.classList.add('selected'));
+    document.getElementById('m-habito-nome')?.focus();
   }
   m.classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -3494,7 +3515,7 @@ const CICLO = {
         fases[k] = 'menstrual';
         if (c.registros?.[k]?.fluxo) {
           const f = c.registros[k].fluxo;
-          fluxo[k] = f==='intenso'?'🩸🩸🩸':f==='medio'?'🩸🩸':'🩸';
+          fluxo[k] = f; // 'leve'|'medio'|'intenso'
         }
       }
       // Folicular: após menstrual até ovulação
@@ -3533,7 +3554,7 @@ const CICLO = {
       const fl   = fluxo[key] || '';
       const isH  = hojeDate.getDate()===d && hojeDate.getMonth()===this.mes && hojeDate.getFullYear()===this.ano;
       const sexo = ST.data.diarios?.[key]?.sexo;
-      html += `<div class="ciclo-dia ${fase}${isH?' hoje':''}" title="${key}" onclick="CICLO._abrirDia('${key}')">${d}${fl?`<span class="ciclo-fluxo">${fl}</span>`:''}${sexo?'<span class="ciclo-intimidade">🔥</span>':''}</div>`;
+      html += `<div class="ciclo-dia ${fase}${isH?' hoje':''}" title="${key}" onclick="CICLO._abrirDia('${key}')">${d}${fl?`<span class="ciclo-fluxo fl-${fl}">●</span>`:''}${sexo?'<span class="ciclo-intimidade">🔥</span>':''}</div>`;
     }
     grid.innerHTML = html;
     this._renderPrevisoes(fases);
@@ -4158,7 +4179,7 @@ const TAREFAS = {
   render() {
     const lista = document.getElementById('tarefa-list'); if (!lista) return;
     const hoje  = (ST.data.tarefas||[]).filter(t=>t.data===ST.hoje);
-    if (!hoje.length) { lista.innerHTML='<div style="color:var(--text-muted);font-size:.85rem;padding:8px 0">Nenhuma tarefa para hoje</div>'; return; }
+    if (!hoje.length) { lista.innerHTML='<div class="empty-state">Nenhuma tarefa para hoje.<br><button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="nav(\'tarefas\')">+ Adicionar tarefa</button></div>'; return; }
     lista.innerHTML = hoje.map(t=>`
       <div class="tarefa-row">
         <div class="tr-check${t.concluida?' done':''}" onclick="TAREFAS.toggleConcluida(${t.id})">${t.concluida?'✓':''}</div>
@@ -4241,7 +4262,7 @@ const BEMESTAR = {
   renderHistorico() {
     const cont=document.getElementById('bemestar-historico'); if(!cont) return;
     const entradas=Object.entries(ST.data.diarios||{}).filter(([,v])=>v.bemestar||v.emocoes?.length).sort(([a],[b])=>b.localeCompare(a)).slice(0,5);
-    if(!entradas.length){ cont.innerHTML='<div style="color:var(--text-muted);font-size:.85rem">Nenhuma entrada ainda.</div>'; return; }
+    if(!entradas.length){ cont.innerHTML='<div class="empty-state">Nenhuma entrada ainda.<br><small style="color:var(--text-muted)">Registre emoções ou escreva no diário acima e salve.</small></div>'; return; }
     cont.innerHTML=entradas.map(([dt,d])=>{
       const date=new Date(dt+'T12:00:00');
       const day=date.getDate(), month=date.toLocaleDateString('pt-BR',{month:'short'}).toUpperCase().replace('.','');
@@ -4384,7 +4405,7 @@ const PRATICO = {
   renderListas() {
     const cont=document.getElementById('listas-container'); if(!cont) return;
     const ls=ST.data.listas||[];
-    if(!ls.length){ cont.innerHTML='<div style="color:var(--text-muted);font-size:.85rem">Nenhuma lista ainda. Clique em "+ Nova lista".</div>'; return; }
+    if(!ls.length){ cont.innerHTML='<div class="empty-state">Nenhuma lista ainda.<br><button class="btn btn-primary btn-sm" style="margin-top:6px" onclick="PRATICO.abrirModalLista()">+ Nova lista</button></div>'; return; }
     cont.innerHTML=ls.map(l=>`
       <div class="lista-card">
         <div class="lista-header">
