@@ -769,33 +769,32 @@ select.input { cursor: pointer; }
 .timeline-event .ev-title { font-size:.85rem; font-weight:500; }
 .timeline-event .ev-meta { font-size:.72rem; color:var(--text-muted); margin-top:2px; }
 
-/* Agenda — grade semanal (modo Semana) */
-.agenda-week-grid { display:flex; border:1px solid var(--border); border-radius:var(--r-sm); overflow:hidden; }
-.agenda-week-grid-scroll { overflow-x:auto; }
-.wg-time-col { display:flex; flex-direction:column; width:40px; flex-shrink:0; border-right:1px solid var(--border); background:var(--bg-card); }
-.wg-time-cell { font-size:.62rem; color:var(--text-muted); text-align:right; padding-right:6px; padding-top:4px; box-sizing:border-box; border-top:1px solid var(--border); }
-.wg-days-area { flex:1; display:flex; flex-direction:column; min-width:0; }
-.wg-headers { display:grid; grid-template-columns:repeat(7,1fr); border-bottom:1px solid var(--border); background:var(--bg-card); }
-.wg-col-header { text-align:center; padding:8px 2px; cursor:pointer; border-left:1px solid var(--border); transition:background var(--transition); }
-.wg-col-header:first-child { border-left:none; }
-.wg-col-header:hover { background:var(--bg-card2); }
-.wg-col-header.wg-today .wg-day-num { background:var(--primary); color:#fff; border-radius:50%; width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center; }
-.wg-day-name { display:block; font-size:.62rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; }
-.wg-day-num { display:inline-block; font-size:.9rem; font-weight:600; line-height:1.4; }
-.wg-cols-wrap { display:flex; position:relative; }
-.wg-grid-lines { position:absolute; inset:0; pointer-events:none; }
-.wg-cols { display:grid; grid-template-columns:repeat(7,1fr); flex:1; }
-.wg-col-body { position:relative; border-left:1px solid var(--border); }
-.wg-col-body:first-child { border-left:none; }
-.wg-hour-line { position:absolute; left:0; right:0; border-top:1px solid var(--border); }
-.wg-ev-block { position:absolute; left:2px; right:2px; background:var(--accent-lt); border-left:3px solid var(--primary); border-radius:4px; padding:2px 4px; overflow:hidden; cursor:pointer; transition:background var(--transition); z-index:1; }
-.wg-ev-block:hover { background:var(--bg-card2); }
-.wg-ev-title { font-size:.68rem; font-weight:500; display:block; line-height:1.3; }
-.wg-ev-time { font-size:.6rem; color:var(--text-muted); display:block; }
-.wg-allday-row { display:grid; grid-template-columns:repeat(7,1fr); border-bottom:1px solid var(--border); min-height:20px; background:var(--bg-card2); }
-.wg-allday-cell { border-left:1px solid var(--border); padding:2px 3px; font-size:.62rem; }
-.wg-allday-cell:first-child { border-left:none; }
-.wg-allday-chip { background:var(--accent-lt); border-left:2px solid var(--primary); border-radius:2px; padding:1px 3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* Agenda — strip de dias (modo Dia) */
+.week-days { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:20px; }
+.week-day { display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 4px; border-radius:var(--r-sm); cursor:pointer; transition:background var(--transition); border:1px solid transparent; }
+.week-day:hover { background:var(--bg-card2); }
+.week-day.today { border-color:var(--primary); background:var(--accent-lt); }
+.week-day.selected { background:var(--primary); color:#fff; border-color:var(--primary); }
+.week-day .wd-name { font-size:.68rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; }
+.week-day.selected .wd-name { color:rgba(255,255,255,.8); }
+.week-day.today:not(.selected) .wd-name { color:var(--primary); }
+.week-day .wd-num { font-size:1rem; font-weight:600; }
+
+/* Agenda — planner semanal (modo Semana) */
+.agenda-planner-scroll { overflow-x:auto; padding-bottom:4px; }
+.agenda-planner { display:grid; grid-template-columns:repeat(7,minmax(120px,1fr)); gap:8px; min-width:600px; }
+.planner-col { display:flex; flex-direction:column; gap:6px; }
+.planner-col-header { text-align:center; padding:10px 6px 8px; border-radius:var(--r-sm); cursor:pointer; background:var(--bg-card); border:1px solid var(--border); transition:background var(--transition); }
+.planner-col-header:hover { background:var(--bg-card2); }
+.planner-col-header.pl-today { border-color:var(--primary); background:var(--accent-lt); }
+.planner-col-header.pl-today .pl-num { background:var(--primary); color:#fff; border-radius:50%; width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; }
+.pl-name { display:block; font-size:.65rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:2px; }
+.pl-num { display:inline-block; font-size:.95rem; font-weight:600; }
+.planner-ev { background:var(--accent-lt); border-left:3px solid var(--primary); border-radius:0 var(--r-sm) var(--r-sm) 0; padding:7px 10px; cursor:pointer; transition:background var(--transition); }
+.planner-ev:hover { background:var(--bg-card2); }
+.planner-ev-time { font-size:.68rem; color:var(--text-muted); font-weight:500; margin-bottom:1px; }
+.planner-ev-title { font-size:.82rem; font-weight:500; line-height:1.3; }
+.planner-empty { text-align:center; padding:16px 4px; color:var(--text-muted); font-size:.75rem; }
 
 /* Agenda — calendário mensal (modo Mês) */
 .agenda-month-grid { border:1px solid var(--border); border-radius:var(--r-sm); overflow:hidden; }
@@ -1926,6 +1925,7 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
 
       <!-- View: Dia -->
       <div id="agenda-view-dia">
+        <div class="week-days" id="week-days-dia"></div>
         <div class="agenda-timeline"></div>
       </div>
 
@@ -2998,12 +2998,33 @@ const AGENDA = {
   /* ── MODO DIA ── */
   async _renderDia() {
     this._showView('agenda-view-dia');
+    this._renderDayStrip();
     if (!GCAL.TOKEN) { this._renderTimeline([]); return; }
     this._renderTimeline(null);
     if (!this._cache[this._selected]) {
       this._cache[this._selected] = await GCAL.listarDia(this._selected);
     }
     this._renderTimeline(this._cache[this._selected]);
+  },
+
+  _renderDayStrip() {
+    const cont = document.getElementById('week-days-dia'); if (!cont) return;
+    const today = ST.hoje;
+    cont.innerHTML = '';
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(this._weekStart); d.setDate(d.getDate() + i);
+      const ds = this._fmt(d);
+      const div = document.createElement('div');
+      div.className = 'week-day' + (ds === today ? ' today' : '') + (ds === this._selected ? ' selected' : '');
+      div.onclick = () => { this._selected = ds; this._renderDayStrip(); this._renderTimeline(null); this._fetchAndShowDay(ds); };
+      div.innerHTML = `<span class="wd-name">${this._NAMES[d.getDay()]}</span><span class="wd-num">${d.getDate()}</span>`;
+      cont.appendChild(div);
+    }
+  },
+
+  async _fetchAndShowDay(ds) {
+    if (!this._cache[ds]) this._cache[ds] = await GCAL.listarDia(ds);
+    this._renderTimeline(this._cache[ds]);
   },
 
   _renderTimeline(events) {
@@ -3027,7 +3048,7 @@ const AGENDA = {
     }).join('');
   },
 
-  /* ── MODO SEMANA ── */
+  /* ── MODO SEMANA (planner) ── */
   async _renderSemana() {
     this._showView('agenda-view-semana');
     const cont = document.getElementById('agenda-view-semana');
@@ -3039,8 +3060,7 @@ const AGENDA = {
       const d = new Date(this._weekStart); d.setDate(d.getDate() + i);
       days.push(this._fmt(d));
     }
-    const missing = days.filter(ds => !this._cache[ds]);
-    if (missing.length) {
+    if (days.some(ds => !this._cache[ds])) {
       const events = await GCAL.listarRange(days[0], days[6]);
       days.forEach(ds => { if (!this._cache[ds]) this._cache[ds] = []; });
       events.forEach(ev => {
@@ -3048,60 +3068,36 @@ const AGENDA = {
         if (this._cache[evDay] !== undefined) this._cache[evDay].push(ev);
       });
     }
-    this._renderWeekGrid(days, cont);
+    this._renderPlanner(days, cont);
   },
 
-  _renderWeekGrid(days, cont) {
+  _renderPlanner(days, cont) {
     const today = ST.hoje;
-    const HOUR_H = 52, HOURS = Array.from({length:18},(_,i)=>i+6);
-    const GRID_H = HOURS.length * HOUR_H;
-
-    const headers = days.map(ds => {
+    const cols = days.map(ds => {
       const d = new Date(ds+'T12:00:00');
       const isToday = ds === today;
-      const allDay = (this._cache[ds]||[]).filter(ev => !ev.start?.dateTime);
-      const allDayHtml = allDay.map(ev => `<div class="wg-allday-chip">${escHtml(ev.summary||'')}</div>`).join('');
-      return `<div class="wg-col-header${isToday?' wg-today':''}" onclick="AGENDA.setMode('dia');AGENDA.render('${ds}')">
-        <span class="wg-day-name">${this._NAMES[d.getDay()]}</span>
-        <span class="wg-day-num">${d.getDate()}</span>
-        ${allDayHtml ? `<div class="wg-allday-cell">${allDayHtml}</div>` : ''}
+      const events = this._cache[ds] || [];
+      const evCards = events.length
+        ? events.map(ev => {
+            const sd = ev.start?.dateTime;
+            const time = sd ? sd.slice(11,16) : 'Dia inteiro';
+            const ed = ev.end?.dateTime;
+            const timeStr = sd ? time + (ed ? ' – '+ed.slice(11,16) : '') : 'Dia inteiro';
+            return `<div class="planner-ev" onclick="AGENDA.setMode('dia');AGENDA.render('${ds}')">
+              <div class="planner-ev-time">${escHtml(timeStr)}</div>
+              <div class="planner-ev-title">${escHtml(ev.summary||'(sem título)')}</div>
+            </div>`;
+          }).join('')
+        : `<div class="planner-empty">—</div>`;
+      return `<div class="planner-col">
+        <div class="planner-col-header${isToday?' pl-today':''}" onclick="AGENDA.setMode('dia');AGENDA.render('${ds}')">
+          <span class="pl-name">${this._NAMES[d.getDay()]}</span>
+          <span class="pl-num">${d.getDate()}</span>
+        </div>
+        ${evCards}
       </div>`;
     }).join('');
-
-    const cols = days.map(ds => {
-      const events = (this._cache[ds]||[]).filter(ev => ev.start?.dateTime);
-      const blocks = events.map(ev => {
-        const sd = ev.start.dateTime, ed = ev.end?.dateTime;
-        const [h,m] = sd.slice(11,16).split(':').map(Number);
-        if (h < 6 || h >= 24) return '';
-        const top = ((h-6) + m/60) * HOUR_H;
-        let height = HOUR_H;
-        if (ed) {
-          const [eh,em2] = ed.slice(11,16).split(':').map(Number);
-          height = Math.max(22, ((eh-h)+(em2-m)/60)*HOUR_H);
-        }
-        return `<div class="wg-ev-block" style="top:${top}px;height:${height}px" onclick="AGENDA.setMode('dia');AGENDA.render('${ds}')">
-          <span class="wg-ev-title">${escHtml(ev.summary||'(sem título)')}</span>
-          <span class="wg-ev-time">${sd.slice(11,16)}</span>
-        </div>`;
-      }).join('');
-      const hourLines = HOURS.map(h => `<div class="wg-hour-line" style="top:${(h-6)*HOUR_H}px"></div>`).join('');
-      return `<div class="wg-col-body" style="height:${GRID_H}px">${hourLines}${blocks}</div>`;
-    }).join('');
-
-    const timeCol = HOURS.map(h =>
-      `<div class="wg-time-cell" style="height:${HOUR_H}px">${String(h).padStart(2,'0')}:00</div>`
-    ).join('');
-
-    cont.innerHTML = `<div class="agenda-week-grid-scroll" style="overflow-x:auto">
-      <div class="agenda-week-grid" style="min-width:520px">
-        <div class="wg-time-col"><div style="height:40px"></div>${timeCol}</div>
-        <div class="wg-days-area">
-          <div class="wg-headers">${headers}</div>
-          <div class="wg-cols-wrap"><div class="wg-cols" style="height:${GRID_H}px">${cols}</div></div>
-        </div>
-      </div>
-    </div>`;
+    cont.innerHTML = `<div class="agenda-planner-scroll"><div class="agenda-planner">${cols}</div></div>`;
   },
 
   /* ── MODO MÊS ── */
