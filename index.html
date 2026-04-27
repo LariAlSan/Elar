@@ -748,92 +748,68 @@ select.input { cursor: pointer; }
 /* ═══════════════════════════════════════════════
    PAGE: AGENDA
 ═══════════════════════════════════════════════ */
-.agenda-connect {
-  text-align: center;
-  padding: 48px 24px;
-}
-.agenda-connect-icon { font-size: 3rem; margin-bottom: 16px; }
-.agenda-connect h3 {
-  font-family: var(--font-h);
-  font-style: italic;
-  font-size: 1.3rem;
-  margin-bottom: 8px;
-}
-.agenda-connect p { font-size: .85rem; color: var(--text-muted); max-width: 320px; margin: 0 auto 20px; }
+/* Agenda — seletor de modo */
+.agenda-mode-sw { display:flex; background:var(--bg-card2); border-radius:var(--r-sm); padding:3px; gap:2px; }
+.mode-btn { padding:5px 13px; border-radius:8px; font-size:.78rem; font-weight:500; color:var(--text-muted); transition:var(--transition); cursor:pointer; }
+.mode-btn.active { background:var(--bg-card); color:var(--primary); font-weight:600; box-shadow:var(--shadow); }
 
-.week-nav {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-.week-nav .week-label { flex: 1; font-weight: 600; font-size: .92rem; text-align: center; }
-.week-days {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-  margin-bottom: 24px;
-}
-.week-day {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 10px 4px;
-  border-radius: var(--r-sm);
-  cursor: pointer;
-  transition: background var(--transition);
-  border: 1px solid transparent;
-}
-.week-day:hover { background: var(--bg-card2); }
-.week-day.today { border-color: var(--primary); background: var(--accent-lt); }
-.week-day.selected { background: var(--primary); color: #fff; border-color: var(--primary); }
-.week-day .wd-name { font-size: .68rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
-.week-day.selected .wd-name { color: rgba(255,255,255,.8); }
-.week-day .wd-num { font-size: 1rem; font-weight: 600; }
-.week-day .wd-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--primary); }
-.week-day.selected .wd-dot { background: rgba(255,255,255,.7); }
+/* Agenda — nav */
+.week-nav { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.week-nav .week-label { flex:1; font-weight:600; font-size:.92rem; text-align:center; }
 
-.agenda-timeline { display: flex; flex-direction: column; gap: 2px; }
-.timeline-slot {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  padding: 4px 0;
-  min-height: 40px;
-}
-.timeline-time {
-  width: 44px;
-  font-size: .72rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  padding-top: 10px;
-  flex-shrink: 0;
-  text-align: right;
-}
-.timeline-line {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
-  width: 16px;
-  padding-top: 14px;
-}
-.timeline-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
-.timeline-fill { flex: 1; width: 1px; background: var(--border); margin-top: 4px; }
-.timeline-event {
-  flex: 1;
-  background: var(--accent-lt);
-  border-left: 3px solid var(--primary);
-  border-radius: 0 var(--r-sm) var(--r-sm) 0;
-  padding: 8px 12px;
-  margin: 2px 0;
-  cursor: pointer;
-  transition: background var(--transition);
-}
-.timeline-event:hover { background: var(--bg-card2); }
-.timeline-event .ev-title { font-size: .85rem; font-weight: 500; }
-.timeline-event .ev-meta { font-size: .72rem; color: var(--text-muted); margin-top: 2px; }
+/* Agenda — timeline (modo Dia) */
+.agenda-timeline { display:flex; flex-direction:column; gap:2px; }
+.timeline-slot { display:flex; gap:16px; align-items:flex-start; padding:4px 0; min-height:40px; }
+.timeline-time { width:44px; font-size:.72rem; font-weight:600; color:var(--text-muted); padding-top:10px; flex-shrink:0; text-align:right; }
+.timeline-line { display:flex; flex-direction:column; align-items:center; flex-shrink:0; width:16px; padding-top:14px; }
+.timeline-dot { width:8px; height:8px; border-radius:50%; background:var(--border); flex-shrink:0; }
+.timeline-fill { flex:1; width:1px; background:var(--border); margin-top:4px; }
+.timeline-event { flex:1; background:var(--accent-lt); border-left:3px solid var(--primary); border-radius:0 var(--r-sm) var(--r-sm) 0; padding:8px 12px; margin:2px 0; cursor:pointer; transition:background var(--transition); }
+.timeline-event:hover { background:var(--bg-card2); }
+.timeline-event .ev-title { font-size:.85rem; font-weight:500; }
+.timeline-event .ev-meta { font-size:.72rem; color:var(--text-muted); margin-top:2px; }
+
+/* Agenda — grade semanal (modo Semana) */
+.agenda-week-grid { display:flex; border:1px solid var(--border); border-radius:var(--r-sm); overflow:hidden; }
+.agenda-week-grid-scroll { overflow-x:auto; }
+.wg-time-col { display:flex; flex-direction:column; width:40px; flex-shrink:0; border-right:1px solid var(--border); background:var(--bg-card); }
+.wg-time-cell { font-size:.62rem; color:var(--text-muted); text-align:right; padding-right:6px; padding-top:4px; box-sizing:border-box; border-top:1px solid var(--border); }
+.wg-days-area { flex:1; display:flex; flex-direction:column; min-width:0; }
+.wg-headers { display:grid; grid-template-columns:repeat(7,1fr); border-bottom:1px solid var(--border); background:var(--bg-card); }
+.wg-col-header { text-align:center; padding:8px 2px; cursor:pointer; border-left:1px solid var(--border); transition:background var(--transition); }
+.wg-col-header:first-child { border-left:none; }
+.wg-col-header:hover { background:var(--bg-card2); }
+.wg-col-header.wg-today .wg-day-num { background:var(--primary); color:#fff; border-radius:50%; width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center; }
+.wg-day-name { display:block; font-size:.62rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; }
+.wg-day-num { display:inline-block; font-size:.9rem; font-weight:600; line-height:1.4; }
+.wg-cols-wrap { display:flex; position:relative; }
+.wg-grid-lines { position:absolute; inset:0; pointer-events:none; }
+.wg-cols { display:grid; grid-template-columns:repeat(7,1fr); flex:1; }
+.wg-col-body { position:relative; border-left:1px solid var(--border); }
+.wg-col-body:first-child { border-left:none; }
+.wg-hour-line { position:absolute; left:0; right:0; border-top:1px solid var(--border); }
+.wg-ev-block { position:absolute; left:2px; right:2px; background:var(--accent-lt); border-left:3px solid var(--primary); border-radius:4px; padding:2px 4px; overflow:hidden; cursor:pointer; transition:background var(--transition); z-index:1; }
+.wg-ev-block:hover { background:var(--bg-card2); }
+.wg-ev-title { font-size:.68rem; font-weight:500; display:block; line-height:1.3; }
+.wg-ev-time { font-size:.6rem; color:var(--text-muted); display:block; }
+.wg-allday-row { display:grid; grid-template-columns:repeat(7,1fr); border-bottom:1px solid var(--border); min-height:20px; background:var(--bg-card2); }
+.wg-allday-cell { border-left:1px solid var(--border); padding:2px 3px; font-size:.62rem; }
+.wg-allday-cell:first-child { border-left:none; }
+.wg-allday-chip { background:var(--accent-lt); border-left:2px solid var(--primary); border-radius:2px; padding:1px 3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* Agenda — calendário mensal (modo Mês) */
+.agenda-month-grid { border:1px solid var(--border); border-radius:var(--r-sm); overflow:hidden; }
+.mc-header-row { display:grid; grid-template-columns:repeat(7,1fr); background:var(--bg-card); border-bottom:1px solid var(--border); }
+.mc-header { text-align:center; font-size:.68rem; font-weight:600; color:var(--text-muted); padding:8px 0; }
+.mc-body { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; background:var(--border); }
+.mc-cell { background:var(--bg-card); padding:5px; min-height:72px; cursor:pointer; transition:background var(--transition); }
+.mc-cell:hover { background:var(--bg-card2); }
+.mc-cell.mc-empty { background:var(--bg-base); cursor:default; }
+.mc-cell.mc-today .mc-day-num { background:var(--primary); color:#fff; border-radius:50%; width:22px; height:22px; display:inline-flex; align-items:center; justify-content:center; }
+.mc-cell.mc-out { background:var(--bg-base); opacity:.55; }
+.mc-day-num { font-size:.78rem; font-weight:500; margin-bottom:3px; display:block; }
+.mc-ev-chip { font-size:.62rem; background:var(--accent-lt); border-left:2px solid var(--primary); padding:1px 4px; border-radius:2px; margin-bottom:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+.mc-ev-more { font-size:.6rem; color:var(--text-muted); padding-left:2px; }
 
 /* ═══════════════════════════════════════════════
    PAGE: TAREFAS
@@ -1918,94 +1894,46 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
           <div class="page-title">Agenda</div>
           <div class="page-subtitle">Seus compromissos</div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="document.getElementById('ev-data').value=document.getElementById('ev-data').value||ST.hoje;openModal('modal-evento')">+ Novo evento</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <div class="agenda-mode-sw">
+            <button class="mode-btn active" id="mbtn-dia"    onclick="AGENDA.setMode('dia')">Dia</button>
+            <button class="mode-btn"        id="mbtn-semana" onclick="AGENDA.setMode('semana')">Semana</button>
+            <button class="mode-btn"        id="mbtn-mes"    onclick="AGENDA.setMode('mes')">Mês</button>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('ev-data').value=document.getElementById('ev-data').value||ST.hoje;openModal('modal-evento')">+ Novo</button>
+        </div>
       </div>
 
-      <!-- Semana nav -->
+      <!-- Navegação de período -->
       <div class="week-nav">
-        <button class="btn-icon" onclick="weekPrev()">‹</button>
-        <span class="week-label" id="week-label">24 – 30 de abril</span>
-        <button class="btn-icon" onclick="weekNext()">›</button>
-        <button class="btn btn-secondary btn-sm" onclick="weekToday()">Hoje</button>
+        <button class="btn-icon" onclick="AGENDA.prev()">‹</button>
+        <span class="week-label" id="week-label"></span>
+        <button class="btn-icon" onclick="AGENDA.next()">›</button>
+        <button class="btn btn-secondary btn-sm" onclick="AGENDA.goToday()">Hoje</button>
       </div>
 
-      <!-- Dias da semana -->
-      <div class="week-days" id="week-days">
-        <div class="week-day">
-          <span class="wd-name">DOM</span><span class="wd-num">20</span>
-        </div>
-        <div class="week-day">
-          <span class="wd-name">SEG</span><span class="wd-num">21</span>
-          <div class="wd-dot"></div>
-        </div>
-        <div class="week-day">
-          <span class="wd-name">TER</span><span class="wd-num">22</span>
-        </div>
-        <div class="week-day">
-          <span class="wd-name">QUA</span><span class="wd-num">23</span>
-          <div class="wd-dot"></div>
-        </div>
-        <div class="week-day today selected">
-          <span class="wd-name">QUI</span><span class="wd-num">24</span>
-          <div class="wd-dot"></div>
-        </div>
-        <div class="week-day">
-          <span class="wd-name">SEX</span><span class="wd-num">25</span>
-        </div>
-        <div class="week-day">
-          <span class="wd-name">SÁB</span><span class="wd-num">26</span>
-        </div>
-      </div>
-
-      <!-- Conectar Google Calendar -->
-      <div class="card" id="gcal-connect-banner">
+      <!-- Banner conectar Google Calendar -->
+      <div class="card" id="gcal-connect-banner" style="display:none">
         <div style="display:flex;align-items:center;gap:14px">
           <span style="font-size:1.8rem">📅</span>
           <div style="flex:1">
             <div style="font-weight:600;margin-bottom:3px">Conectar ao Google Calendar</div>
             <div style="font-size:.82rem;color:var(--text-muted)">Visualize e gerencie seus eventos do Google</div>
           </div>
-          <button class="btn btn-primary btn-sm">Conectar</button>
+          <button class="btn btn-primary btn-sm" onclick="GCAL.signIn()">Conectar</button>
         </div>
       </div>
 
-      <!-- Timeline de eventos -->
-      <div class="agenda-timeline" style="margin-top:16px">
-        <div class="timeline-slot">
-          <span class="timeline-time">08:00</span>
-          <div class="timeline-line"><div class="timeline-dot"></div><div class="timeline-fill"></div></div>
-          <div></div>
-        </div>
-        <div class="timeline-slot">
-          <span class="timeline-time">09:00</span>
-          <div class="timeline-line"><div class="timeline-dot" style="background:var(--primary)"></div><div class="timeline-fill"></div></div>
-          <div class="timeline-event">
-            <div class="ev-title">Reunião de planejamento</div>
-            <div class="ev-meta">09:00 – 10:00 · Google Meet</div>
-          </div>
-        </div>
-        <div class="timeline-slot">
-          <span class="timeline-time">12:00</span>
-          <div class="timeline-line"><div class="timeline-dot"></div><div class="timeline-fill"></div></div>
-          <div></div>
-        </div>
-        <div class="timeline-slot">
-          <span class="timeline-time">14:30</span>
-          <div class="timeline-line"><div class="timeline-dot" style="background:var(--success)"></div><div class="timeline-fill"></div></div>
-          <div class="timeline-event" style="border-color:var(--success);background:var(--success-lt)">
-            <div class="ev-title">Academia</div>
-            <div class="ev-meta">14:30 – 15:30 · Smart Fit</div>
-          </div>
-        </div>
-        <div class="timeline-slot">
-          <span class="timeline-time">20:00</span>
-          <div class="timeline-line"><div class="timeline-dot" style="background:var(--warning)"></div><div class="timeline-fill"></div></div>
-          <div class="timeline-event" style="border-color:var(--warning);background:var(--warning-lt)">
-            <div class="ev-title">Jantar com a família</div>
-            <div class="ev-meta">20:00 – 22:00</div>
-          </div>
-        </div>
+      <!-- View: Dia -->
+      <div id="agenda-view-dia">
+        <div class="agenda-timeline"></div>
       </div>
+
+      <!-- View: Semana -->
+      <div id="agenda-view-semana" style="display:none"></div>
+
+      <!-- View: Mês -->
+      <div id="agenda-view-mes" style="display:none"></div>
     </section>
 
     <!-- ── TAREFAS ── -->
@@ -2952,6 +2880,10 @@ const GCAL = {
   async listarDia(dateStr) {
     return (await this._req(`/calendars/primary/events?timeMin=${dateStr}T00:00:00-03:00&timeMax=${dateStr}T23:59:59-03:00&singleEvents=true&orderBy=startTime`))?.items || [];
   },
+
+  async listarRange(startStr, endStr) {
+    return (await this._req(`/calendars/primary/events?timeMin=${startStr}T00:00:00-03:00&timeMax=${endStr}T23:59:59-03:00&singleEvents=true&orderBy=startTime&maxResults=250`))?.items || [];
+  },
   async criar(titulo, data, hi='', hf='', desc='', local='') {
     let start, end;
     if (hi) {
@@ -2978,83 +2910,108 @@ const GCAL = {
 
 /* ─── AGENDA ─── */
 const AGENDA = {
-  _weekStart: null,
+  _mode: 'dia',
   _selected: null,
+  _weekStart: null,
+  _cache: {},
+
   _fmt(d) { return d.toISOString().split('T')[0]; },
+
   _getMonday(ds) {
     const dt = new Date(ds + 'T12:00:00');
     const day = dt.getDay();
     dt.setDate(dt.getDate() - (day === 0 ? 6 : day - 1));
     return dt;
   },
+
+  _MONTHS_LONG: ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'],
+  _MONTHS_SHORT: ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'],
+  _NAMES: ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'],
+
+  setMode(mode) {
+    this._mode = mode;
+    ['dia','semana','mes'].forEach(m => {
+      document.getElementById('mbtn-'+m)?.classList.toggle('active', m === mode);
+    });
+    this.render(this._selected || ST.hoje);
+  },
+
   render(dateStr) {
     this._selected = dateStr || ST.hoje;
     this._weekStart = this._getMonday(this._selected);
     this._renderBanner();
-    this._renderWeek();
     this._updateLabel();
-    if (GCAL.TOKEN) this._fetchDay(this._selected);
-    else this._renderTimeline([]);
+    if (this._mode === 'dia') this._renderDia();
+    else if (this._mode === 'semana') this._renderSemana();
+    else this._renderMes();
   },
+
+  prev() {
+    const d = new Date(this._selected + 'T12:00:00');
+    if (this._mode === 'dia') d.setDate(d.getDate() - 1);
+    else if (this._mode === 'semana') d.setDate(d.getDate() - 7);
+    else d.setMonth(d.getMonth() - 1);
+    this.render(this._fmt(d));
+  },
+
+  next() {
+    const d = new Date(this._selected + 'T12:00:00');
+    if (this._mode === 'dia') d.setDate(d.getDate() + 1);
+    else if (this._mode === 'semana') d.setDate(d.getDate() + 7);
+    else d.setMonth(d.getMonth() + 1);
+    this.render(this._fmt(d));
+  },
+
+  goToday() { this.render(ST.hoje); },
+
   _renderBanner() {
     const banner = document.getElementById('gcal-connect-banner');
-    if (!banner) return;
-    banner.style.display = GCAL.TOKEN ? 'none' : '';
-    const btn = banner.querySelector('button');
-    if (btn) btn.onclick = () => GCAL.signIn();
+    if (banner) banner.style.display = GCAL.TOKEN ? 'none' : '';
   },
+
+  _showView(id) {
+    ['agenda-view-dia','agenda-view-semana','agenda-view-mes'].forEach(v => {
+      const el = document.getElementById(v);
+      if (el) el.style.display = v === id ? '' : 'none';
+    });
+  },
+
   _updateLabel() {
     const el = document.getElementById('week-label');
     if (!el) return;
-    const end = new Date(this._weekStart);
-    end.setDate(end.getDate() + 6);
-    const months = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-    const sm = months[this._weekStart.getMonth()], em = months[end.getMonth()];
-    el.textContent = sm === em
-      ? `${this._weekStart.getDate()} – ${end.getDate()} de ${sm}`
-      : `${this._weekStart.getDate()} de ${sm} – ${end.getDate()} de ${em}`;
-  },
-  _renderWeek() {
-    const container = document.getElementById('week-days');
-    if (!container) return;
-    const today = ST.hoje;
-    const NAMES = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
-    container.innerHTML = '';
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(this._weekStart);
-      d.setDate(d.getDate() + i);
-      const ds = this._fmt(d);
-      const div = document.createElement('div');
-      div.className = 'week-day' + (ds === today ? ' today' : '') + (ds === this._selected ? ' selected' : '');
-      div.onclick = () => this.selectDay(ds);
-      div.innerHTML = `<span class="wd-name">${NAMES[d.getDay()]}</span><span class="wd-num">${d.getDate()}</span>`;
-      container.appendChild(div);
+    const d = new Date(this._selected + 'T12:00:00');
+    if (this._mode === 'dia') {
+      el.textContent = `${d.getDate()} de ${this._MONTHS_SHORT[d.getMonth()]}`;
+    } else if (this._mode === 'semana') {
+      const end = new Date(this._weekStart);
+      end.setDate(end.getDate() + 6);
+      const sm = this._MONTHS_SHORT[this._weekStart.getMonth()];
+      const em = this._MONTHS_SHORT[end.getMonth()];
+      el.textContent = sm === em
+        ? `${this._weekStart.getDate()} – ${end.getDate()} de ${sm}`
+        : `${this._weekStart.getDate()} de ${sm} – ${end.getDate()} de ${em}`;
+    } else {
+      el.textContent = `${this._MONTHS_LONG[d.getMonth()]} de ${d.getFullYear()}`;
     }
   },
-  async selectDay(ds) {
-    this._selected = ds;
-    this._renderWeek();
-    if (GCAL.TOKEN) await this._fetchDay(ds);
-  },
-  async _fetchDay(ds) {
+
+  /* ── MODO DIA ── */
+  async _renderDia() {
+    this._showView('agenda-view-dia');
+    if (!GCAL.TOKEN) { this._renderTimeline([]); return; }
     this._renderTimeline(null);
-    this._renderTimeline(await GCAL.listarDia(ds));
+    if (!this._cache[this._selected]) {
+      this._cache[this._selected] = await GCAL.listarDia(this._selected);
+    }
+    this._renderTimeline(this._cache[this._selected]);
   },
+
   _renderTimeline(events) {
-    const el = document.querySelector('.agenda-timeline');
+    const el = document.querySelector('#agenda-view-dia .agenda-timeline');
     if (!el) return;
-    if (events === null) {
-      el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted)">Carregando...</div>';
-      return;
-    }
-    if (!GCAL.TOKEN) {
-      el.innerHTML = '<div style="text-align:center;padding:40px 16px;color:var(--text-muted)">Conecte o Google Calendar para ver seus eventos.</div>';
-      return;
-    }
-    if (!events.length) {
-      el.innerHTML = '<div style="text-align:center;padding:40px 16px;color:var(--text-muted)">Nenhum evento neste dia.</div>';
-      return;
-    }
+    if (events === null) { el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted)">Carregando...</div>'; return; }
+    if (!GCAL.TOKEN) { el.innerHTML = '<div style="text-align:center;padding:40px 16px;color:var(--text-muted)">Conecte o Google Calendar para ver seus eventos.</div>'; return; }
+    if (!events.length) { el.innerHTML = '<div style="text-align:center;padding:40px 16px;color:var(--text-muted)">Nenhum evento neste dia.</div>'; return; }
     el.innerHTML = events.map(ev => {
       const sd = ev.start?.dateTime, ed = ev.end?.dateTime;
       const time = sd ? sd.slice(11,16) + (ed ? ' – ' + ed.slice(11,16) : '') : 'Dia inteiro';
@@ -3063,11 +3020,144 @@ const AGENDA = {
         <span class="timeline-time">${time.split(' – ')[0]}</span>
         <div class="timeline-line"><div class="timeline-dot" style="background:var(--primary)"></div><div class="timeline-fill"></div></div>
         <div class="timeline-event">
-          <div class="ev-title">${ev.summary || '(sem título)'}</div>
-          <div class="ev-meta">${time}${loc}</div>
+          <div class="ev-title">${escHtml(ev.summary||'(sem título)')}</div>
+          <div class="ev-meta">${escHtml(time)}${escHtml(loc)}</div>
         </div>
       </div>`;
     }).join('');
+  },
+
+  /* ── MODO SEMANA ── */
+  async _renderSemana() {
+    this._showView('agenda-view-semana');
+    const cont = document.getElementById('agenda-view-semana');
+    if (!GCAL.TOKEN) { cont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Conecte o Google Calendar para ver seus eventos.</div>'; return; }
+    cont.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted)">Carregando...</div>';
+
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(this._weekStart); d.setDate(d.getDate() + i);
+      days.push(this._fmt(d));
+    }
+    const missing = days.filter(ds => !this._cache[ds]);
+    if (missing.length) {
+      const events = await GCAL.listarRange(days[0], days[6]);
+      days.forEach(ds => { if (!this._cache[ds]) this._cache[ds] = []; });
+      events.forEach(ev => {
+        const evDay = (ev.start?.dateTime || ev.start?.date || '').slice(0,10);
+        if (this._cache[evDay] !== undefined) this._cache[evDay].push(ev);
+      });
+    }
+    this._renderWeekGrid(days, cont);
+  },
+
+  _renderWeekGrid(days, cont) {
+    const today = ST.hoje;
+    const HOUR_H = 52, HOURS = Array.from({length:18},(_,i)=>i+6);
+    const GRID_H = HOURS.length * HOUR_H;
+
+    const headers = days.map(ds => {
+      const d = new Date(ds+'T12:00:00');
+      const isToday = ds === today;
+      const allDay = (this._cache[ds]||[]).filter(ev => !ev.start?.dateTime);
+      const allDayHtml = allDay.map(ev => `<div class="wg-allday-chip">${escHtml(ev.summary||'')}</div>`).join('');
+      return `<div class="wg-col-header${isToday?' wg-today':''}" onclick="AGENDA.setMode('dia');AGENDA.render('${ds}')">
+        <span class="wg-day-name">${this._NAMES[d.getDay()]}</span>
+        <span class="wg-day-num">${d.getDate()}</span>
+        ${allDayHtml ? `<div class="wg-allday-cell">${allDayHtml}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    const cols = days.map(ds => {
+      const events = (this._cache[ds]||[]).filter(ev => ev.start?.dateTime);
+      const blocks = events.map(ev => {
+        const sd = ev.start.dateTime, ed = ev.end?.dateTime;
+        const [h,m] = sd.slice(11,16).split(':').map(Number);
+        if (h < 6 || h >= 24) return '';
+        const top = ((h-6) + m/60) * HOUR_H;
+        let height = HOUR_H;
+        if (ed) {
+          const [eh,em2] = ed.slice(11,16).split(':').map(Number);
+          height = Math.max(22, ((eh-h)+(em2-m)/60)*HOUR_H);
+        }
+        return `<div class="wg-ev-block" style="top:${top}px;height:${height}px" onclick="AGENDA.setMode('dia');AGENDA.render('${ds}')">
+          <span class="wg-ev-title">${escHtml(ev.summary||'(sem título)')}</span>
+          <span class="wg-ev-time">${sd.slice(11,16)}</span>
+        </div>`;
+      }).join('');
+      const hourLines = HOURS.map(h => `<div class="wg-hour-line" style="top:${(h-6)*HOUR_H}px"></div>`).join('');
+      return `<div class="wg-col-body" style="height:${GRID_H}px">${hourLines}${blocks}</div>`;
+    }).join('');
+
+    const timeCol = HOURS.map(h =>
+      `<div class="wg-time-cell" style="height:${HOUR_H}px">${String(h).padStart(2,'0')}:00</div>`
+    ).join('');
+
+    cont.innerHTML = `<div class="agenda-week-grid-scroll" style="overflow-x:auto">
+      <div class="agenda-week-grid" style="min-width:520px">
+        <div class="wg-time-col"><div style="height:40px"></div>${timeCol}</div>
+        <div class="wg-days-area">
+          <div class="wg-headers">${headers}</div>
+          <div class="wg-cols-wrap"><div class="wg-cols" style="height:${GRID_H}px">${cols}</div></div>
+        </div>
+      </div>
+    </div>`;
+  },
+
+  /* ── MODO MÊS ── */
+  async _renderMes() {
+    this._showView('agenda-view-mes');
+    const cont = document.getElementById('agenda-view-mes');
+    const d = new Date(this._selected+'T12:00:00');
+    const year = d.getFullYear(), month = d.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay  = new Date(year, month+1, 0);
+
+    if (GCAL.TOKEN) {
+      const startStr = this._fmt(firstDay), endStr = this._fmt(lastDay);
+      let needFetch = false;
+      for (let day = 1; day <= lastDay.getDate(); day++) {
+        const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        if (!this._cache[ds]) { needFetch = true; break; }
+      }
+      if (needFetch) {
+        const events = await GCAL.listarRange(startStr, endStr);
+        for (let day = 1; day <= lastDay.getDate(); day++) {
+          const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+          if (!this._cache[ds]) this._cache[ds] = [];
+        }
+        events.forEach(ev => {
+          const evDay = (ev.start?.dateTime || ev.start?.date || '').slice(0,10);
+          if (this._cache[evDay] !== undefined) this._cache[evDay].push(ev);
+        });
+      }
+    }
+    this._renderMonthGrid(year, month, firstDay, lastDay, cont);
+  },
+
+  _renderMonthGrid(year, month, firstDay, lastDay, cont) {
+    const today = ST.hoje;
+    const startDow = firstDay.getDay();
+    const headers = this._NAMES.map(n => `<div class="mc-header">${n}</div>`).join('');
+    let cells = '';
+    for (let i = 0; i < startDow; i++) cells += '<div class="mc-cell mc-empty"></div>';
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const isToday = ds === today;
+      const events = this._cache[ds] || [];
+      const maxShow = 2;
+      const chips = events.slice(0,maxShow).map(ev =>
+        `<span class="mc-ev-chip">${escHtml(ev.summary||'(sem título)')}</span>`
+      ).join('');
+      const more = events.length > maxShow ? `<span class="mc-ev-more">+${events.length-maxShow}</span>` : '';
+      cells += `<div class="mc-cell${isToday?' mc-today':''}" onclick="AGENDA.setMode('dia');AGENDA.render('${ds}')">
+        <span class="mc-day-num">${day}</span>${chips}${more}
+      </div>`;
+    }
+    cont.innerHTML = `<div class="agenda-month-grid">
+      <div class="mc-header-row">${headers}</div>
+      <div class="mc-body">${cells}</div>
+    </div>`;
   }
 };
 
@@ -3085,6 +3175,7 @@ async function salvarEvento() {
     showToast('Evento criado!', 'ok');
     closeModal(null, 'modal-evento');
     ['ev-titulo','ev-data','ev-hi','ev-hf','ev-local','ev-desc'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    delete this._cache[data];
     if (AGENDA._selected === data) AGENDA.render(data);
   } else if (!GCAL.TOKEN) {
     showToast('Sessão expirada. Reconecte o Google Calendar.', 'erro');
@@ -3093,18 +3184,6 @@ async function salvarEvento() {
     showToast('Erro ao criar evento', 'erro');
   }
 }
-
-function weekPrev() {
-  const d = new Date((AGENDA._selected || ST.hoje) + 'T12:00:00');
-  d.setDate(d.getDate() - 7);
-  AGENDA.render(AGENDA._fmt(d));
-}
-function weekNext() {
-  const d = new Date((AGENDA._selected || ST.hoje) + 'T12:00:00');
-  d.setDate(d.getDate() + 7);
-  AGENDA.render(AGENDA._fmt(d));
-}
-function weekToday() { AGENDA.render(ST.hoje); }
 
 /* ─── Confirmação de exclusão ─── */
 function confirmarExcluir(cb) {
