@@ -2795,6 +2795,7 @@ const STORAGE = {
     try {
       ST.data.meta.lastUpdated = new Date().toISOString();
       localStorage.setItem(this.KEY, JSON.stringify(ST.data));
+      GDRIVE.upload();
     } catch(e) { console.warn('STORAGE.save:', e); }
   },
   export() {
@@ -3722,6 +3723,144 @@ const GFIT = {
   }
 };
 
+/* ─── GDRIVE ─── */
+const GDRIVE = {
+  CLIENT_ID: '218452083023-3cc5l1fbc2o82c85639snh96a5nsekvi.apps.googleusercontent.com',
+  TOKEN: null, _client: null,
+  SCOPE: 'https://www.googleapis.com/auth/drive.appdata',
+
+  init() {
+    const s = localStorage.getItem('ela-gdrive-token');
+    if (s) this.TOKEN = s;
+  },
+
+  signIn() {
+    if (!window.google) { showToast('Google não carregado — aguarde e tente novamente','erro'); return; }
+    if (!this._client) this._client = google.accounts.oauth2.initTokenClient({
+      client_id: this.CLIENT_ID, scope: this.SCOPE,
+      callback: async resp => {
+        if (resp.error) { if (resp.error !== 'popup_closed_by_user') showToast('Erro ao conectar Drive: ' + resp.error,'erro'); return; }
+        this.TOKEN = resp.access_token;
+        localStorage.setItem('ela-gdrive-token', this.TOKEN);
+        showToast('Google Drive conectado ✓','ok');
+        CONFIG._renderConta();
+        await this.sync();
+      }
+    });
+    this._client.requestAccessToken();
+  },
+
+  signOut() {
+    this.TOKEN = null;
+    localStorage.removeItem('ela-gdrive-token');
+    localStorage.removeItem('ela-gdrive-fileid');
+    showToast('Google Drive desconectado','ok');
+    CONFIG._renderConta();
+  },
+
+  silentRefresh() {
+    if (!window.google || !localStorage.getItem('ela-gdrive-token')) return;
+    if (!this._client) this._client = google.accounts.oauth2.initTokenClient({
+      client_id: this.CLIENT_ID, scope: this.SCOPE,
+      callback: async resp => {
+        if (resp.error) return;
+        this.TOKEN = resp.access_token;
+        localStorage.setItem('ela-gdrive-token', this.TOKEN);
+        CONFIG._renderConta();
+        await this.sync();
+      }
+    });
+    this._client.requestAccessToken({ prompt: '' });
+  },
+
+  async _getFileId() {
+    const cached = localStorage.getItem('ela-gdrive-fileid');
+    if (cached) return cached;
+    const r = await fetch(
+      "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'ela-data.json'&fields=files(id)",
+      { headers: { Authorization: 'Bearer ' + this.TOKEN } }
+    );
+    if (!r.ok) {
+      await r.json().catch(() => {});
+      const msg = r.status === 403 ? 'Drive: ative a Google Drive API no Cloud Console' : `Erro ${r.status} Google Drive`;
+      showToast(msg, 'erro');
+      return null;
+    }
+    const { files } = await r.json();
+    if (files?.length) { localStorage.setItem('ela-gdrive-fileid', files[0].id); return files[0].id; }
+    return null;
+  },
+
+  async upload() {
+    if (!this.TOKEN) return;
+    try {
+      const json = JSON.stringify(ST.data);
+      const fileId = await this._getFileId();
+      if (fileId) {
+        const r = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+          method: 'PATCH',
+          headers: { Authorization: 'Bearer ' + this.TOKEN, 'Content-Type': 'application/json' },
+          body: json
+        });
+        if (r.status === 401) { this.signOut(); return; }
+        if (!r.ok) { showToast(`Erro ${r.status} ao salvar no Drive`, 'erro'); return; }
+      } else {
+        if (!fileId && fileId !== null) return;
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify({ name:'ela-data.json', parents:['appDataFolder'] })], { type:'application/json' }));
+        form.append('file', new Blob([json], { type:'application/json' }));
+        const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+          method: 'POST', headers: { Authorization: 'Bearer ' + this.TOKEN }, body: form
+        });
+        if (r.status === 401) { this.signOut(); return; }
+        if (!r.ok) { showToast(`Erro ${r.status} ao criar arquivo no Drive`, 'erro'); return; }
+        const { id } = await r.json();
+        localStorage.setItem('ela-gdrive-fileid', id);
+      }
+    } catch(e) { console.warn('GDRIVE.upload:', e); }
+  },
+
+  async download() {
+    if (!this.TOKEN) return null;
+    try {
+      const fileId = await this._getFileId();
+      if (!fileId) return null;
+      const r = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        headers: { Authorization: 'Bearer ' + this.TOKEN }
+      });
+      if (r.status === 401) { this.signOut(); return null; }
+      if (!r.ok) {
+        const msg = r.status === 403 ? 'Drive: ative a Google Drive API no Cloud Console' : `Erro ${r.status} Google Drive`;
+        showToast(msg, 'erro');
+        return null;
+      }
+      return await r.json();
+    } catch(e) { return null; }
+  },
+
+  async sync() {
+    if (!this.TOKEN) return;
+    const driveData = await this.download();
+    if (driveData) {
+      const localTs = ST.data.meta?.lastUpdated || '';
+      const driveTs = driveData.meta?.lastUpdated || '';
+      if (driveTs > localTs) {
+        ST.data = deepMerge(DEF, driveData);
+        localStorage.setItem(STORAGE.KEY, JSON.stringify(ST.data));
+        HOME.render(); TAREFAS.render(); HABITOS.render();
+        updateNavBadgeTarefas(); BEMESTAR.carregar(); CORPO.carregar();
+        PRATICO.renderListas(); PRATICO.renderLembretes(); VINCULOS.render();
+        OBJETIVOS.render(); CHECKIN.carregar(); CICLO.render();
+        buildHumorCalendar(); PADROES.renderInsights();
+        showToast('Dados sincronizados do Drive ✓','ok');
+        return;
+      }
+    }
+    await this.upload();
+    if (this.TOKEN) showToast('Dados salvos no Drive ✓', 'ok');
+  }
+};
+
 /* ─── CHECKIN ─── */
 const CHECKIN = {
   salvar() {
@@ -4391,7 +4530,10 @@ const CONFIG = {
     const gfitStatus = GFIT?.TOKEN
       ? `<span style="color:var(--success)">✓</span> <strong>Google Fit</strong> <span style="color:var(--text-muted);font-size:.78rem">conectado</span>`
       : `<span style="color:var(--text-muted)">Google Fit / Samsung Health</span> <button class="btn btn-ghost btn-sm" onclick="GFIT.signIn()">Conectar</button>`;
-    el.innerHTML = `<div class="cfg-conta-row">${gcalStatus}</div><div class="cfg-conta-row">${gfitStatus}</div>`;
+    const gdriveStatus = GDRIVE?.TOKEN
+      ? `<span style="color:var(--success)">✓</span> <strong>Google Drive</strong> <span style="color:var(--text-muted);font-size:.78rem">sincronizando</span> <button class="btn btn-ghost btn-sm" onclick="GDRIVE.sync()" title="Sincronizar agora">↻</button> <button class="btn btn-ghost btn-sm" onclick="GDRIVE.signOut()">Desconectar</button>`
+      : `<span style="color:var(--text-muted)">Google Drive</span> <button class="btn btn-ghost btn-sm" onclick="GDRIVE.signIn()">Conectar</button>`;
+    el.innerHTML = `<div class="cfg-conta-row">${gcalStatus}</div><div class="cfg-conta-row">${gfitStatus}</div><div class="cfg-conta-row">${gdriveStatus}</div>`;
   },
 
   selectIcon(ic) {
@@ -4490,12 +4632,14 @@ function init() {
   AGENDA.render();
   buildHumorCalendar();
   GFIT.init();
+  GDRIVE.init();
   CONFIG.init();
   PADROES.renderInsights();
   // Renovação silenciosa de tokens (após 2s para GIS carregar)
   setTimeout(() => {
     if (GCAL.TOKEN) GCAL.silentRefresh();
     if (GFIT.TOKEN) GFIT.silentRefresh();
+    if (localStorage.getItem('ela-gdrive-token')) GDRIVE.silentRefresh();
   }, 2000);
   const lastPage = localStorage.getItem('ela-page');
   if (lastPage && PAGES.includes(lastPage) && lastPage !== 'home') nav(lastPage);
