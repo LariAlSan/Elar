@@ -3109,12 +3109,12 @@ const PADROES = {
       humores.forEach(h => contagemHumor[h] = (contagemHumor[h] || 0) + 1);
       const maisFreq = Object.entries(contagemHumor).sort((a, b) => b[1] - a[1])[0];
       const LABEL = { radiante:'Radiante', bem:'Bem', neutra:'Neutra', pesada:'Pesada', dificil:'Dificil' };
-      insights.push({ icon: '🌙', text: `Seu humor mais frequente nos ultimos 30 dias foi <strong>${LABEL[maisFreq[0]] || maisFreq[0]}</strong> (${maisFreq[1]} dias).` });
+      insights.push({ icon: '🌙', text: `Seu humor mais frequente nos últimos 30 dias foi <strong>${LABEL[maisFreq[0]] || maisFreq[0]}</strong> (${maisFreq[1]} dias).` });
     }
     const hs = ST.data.habitos || [];
     if (hs.length) {
       const melhor = hs.map(h => ({ h, pct: dias.filter(d => h.registros?.[d]).length })).sort((a, b) => b.pct - a.pct)[0];
-      if (melhor?.pct > 0) insights.push({ icon: '💪', text: `Seu habito mais consistente e <strong>${melhor.h.icone} ${escHtml(melhor.h.nome)}</strong> (${Math.round(melhor.pct / 30 * 100)}% de consistencia).` });
+      if (melhor?.pct > 0) insights.push({ icon: '💪', text: `Seu hábito mais consistente é <strong>${melhor.h.icone} ${escHtml(melhor.h.nome)}</strong> (${Math.round(melhor.pct / 30 * 100)}% de consistência).` });
     }
     if (!insights.length) insights.push({ icon: '📊', text: 'Continue registrando seus dados diariamente para ver insights personalizados aqui.' });
     el.innerHTML = insights.map(i => `<div class="pattern-insight"><span class="pi-icon">${i.icon}</span><span class="pi-text">${i.text}</span></div>`).join('');
@@ -3781,7 +3781,7 @@ const TAREFAS = {
     const t = ST.data.tarefas?.find(t=>t.id===id); if(!t) return;
     t.concluida=!t.concluida; STORAGE.save(); this.render(); HOME.renderTarefas(); updateNavBadgeTarefas();
   },
-  excluir(id) { confirmarExcluir(() => { ST.data.tarefas=(ST.data.tarefas||[]).filter(t=>t.id!==id); STORAGE.save(); this.render(); HOME.renderTarefas(); }); },
+  excluir(id) { confirmarExcluir(() => { ST.data.tarefas=(ST.data.tarefas||[]).filter(t=>t.id!==id); STORAGE.save(); this.render(); HOME.renderTarefas(); updateNavBadgeTarefas(); }); },
   render() {
     const lista = document.getElementById('tarefa-list'); if (!lista) return;
     const hoje  = (ST.data.tarefas||[]).filter(t=>t.data===ST.hoje);
@@ -3815,7 +3815,7 @@ const HABITOS = {
     if(h.registros[ST.hoje]) delete h.registros[ST.hoje]; else h.registros[ST.hoje]=true;
     STORAGE.save(); this.render(); HOME.renderHabitos(); updateNavBadgeTarefas();
   },
-  excluir(id) { confirmarExcluir(() => { ST.data.habitos=(ST.data.habitos||[]).filter(h=>h.id!==id); STORAGE.save(); this.render(); }); },
+  excluir(id) { confirmarExcluir(() => { ST.data.habitos=(ST.data.habitos||[]).filter(h=>h.id!==id); STORAGE.save(); this.render(); HOME.renderHabitos(); updateNavBadgeTarefas(); }); },
   _streak(h) {
     let n=0; const d=new Date(ST.hoje+'T12:00:00');
     while(h.registros?.[d.toISOString().slice(0,10)]){ n++; d.setDate(d.getDate()-1); } return n;
@@ -3856,6 +3856,7 @@ const BEMESTAR = {
   },
   carregar() {
     const d=ST.data.diarios?.[ST.hoje];
+    document.querySelectorAll('.emocao-chip').forEach(c=>c.classList.remove('selected'));
     document.querySelectorAll('.emocao-chip').forEach(chip=>{
       chip.onclick=()=>chip.classList.toggle('selected');
       if(d?.emocoes?.includes(chip.textContent.trim())) chip.classList.add('selected');
@@ -4185,7 +4186,7 @@ const HOME = {
     if (!GCAL.TOKEN) { cont.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem">Conecte o Google Calendar para ver seus eventos. <button class="btn btn-ghost btn-sm" onclick="GCAL.signIn()">Conectar</button></div>'; return; }
     cont.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem">Carregando...</div>';
     const events = await GCAL.listarDia(ST.hoje);
-    if (!events.length) { cont.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem">Nenhum evento hoje.</div>'; return; }
+    if (!events?.length) { cont.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem">Nenhum evento hoje.</div>'; return; }
     cont.innerHTML = events.slice(0,3).map(ev => {
       const sd = ev.start?.dateTime; const time = sd ? sd.slice(11,16) : 'Dia inteiro';
       return `<div class="event-item"><span class="event-time">${time}</span><span class="event-dot"></span><div><div class="event-title">${escHtml(ev.summary||'(sem título)')}</div></div></div>`;
@@ -4298,19 +4299,24 @@ function applyTheme(key) {
   const t = THEMES[key];
   if (!t) return;
   const s = document.documentElement.style;
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  // Cores de acento — sempre aplicadas (funcionam bem em dark e light)
   s.setProperty('--primary',    t.primary);
   s.setProperty('--primary-dk', t.primaryDk);
   s.setProperty('--primary-l',  t.primaryL);
   s.setProperty('--accent',     t.accent);
   s.setProperty('--accent-lt',  t.accentLt);
-  s.setProperty('--bg-base',    t.bg);
-  s.setProperty('--bg-card2',   t.bgCard2);
-  s.setProperty('--text',       t.text);
-  s.setProperty('--text-2',     t.text2);
-  s.setProperty('--text-muted', t.textMuted);
-  s.setProperty('--border',     t.border);
-  s.setProperty('--shadow',     t.shadow);
-  s.setProperty('--shadow-md',  t.shadowMd);
+  // Vars estruturais — só no light mode (dark mode define as suas próprias via CSS)
+  if (!isDark) {
+    s.setProperty('--bg-base',    t.bg);
+    s.setProperty('--bg-card2',   t.bgCard2);
+    s.setProperty('--text',       t.text);
+    s.setProperty('--text-2',     t.text2);
+    s.setProperty('--text-muted', t.textMuted);
+    s.setProperty('--border',     t.border);
+    s.setProperty('--shadow',     t.shadow);
+    s.setProperty('--shadow-md',  t.shadowMd);
+  }
   document.querySelectorAll('.cfg-swatch').forEach(el =>
     el.classList.toggle('active', el.dataset.themeKey === key)
   );
