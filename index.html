@@ -1253,6 +1253,34 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
 .lembrete-item .lem-text { flex: 1; font-size: .85rem; }
 .lembrete-item .lem-freq { font-size: .72rem; color: var(--text-muted); }
 
+/* Ciclo de Produtos */
+.prod-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.prod-item-main { flex: 1; min-width: 0; }
+.prod-item-nome { font-size: .88rem; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prod-item-meta { font-size: .72rem; color: var(--text-muted); margin-top: 1px; }
+.prod-cat-tag {
+  font-size: .68rem; font-weight: 500; padding: 2px 8px; border-radius: 20px;
+  background: var(--bg-card2); color: var(--text-2); white-space: nowrap;
+}
+.prod-status-badge {
+  font-size: .7rem; font-weight: 600; padding: 3px 9px; border-radius: 20px; white-space: nowrap;
+}
+.prod-status-ok      { background: var(--bg-card2); color: var(--text-muted); }
+.prod-status-expiring{ background: #FEF3C7; color: #B45309; }
+.prod-status-runout  { background: #FFEDD5; color: #C2410C; }
+.prod-status-expired { background: var(--danger-lt); color: var(--danger); }
+.prod-actions { display: flex; gap: 6px; align-items: center; }
+
 /* ═══════════════════════════════════════════════
    PAGE: VÍNCULOS (RELACIONAMENTOS)
 ═══════════════════════════════════════════════ */
@@ -2268,6 +2296,14 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
           </div>
           <div id="lembretes-lista"></div>
         </div>
+        <div class="lista-card">
+          <div class="lista-header">
+            <span class="lh-icon">🧴</span>
+            <span class="lh-title">Ciclo de Produtos</span>
+            <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="CICLOPROD.abrirModal()">+</button>
+          </div>
+          <div id="cicloprod-lista"></div>
+        </div>
       </div>
     </section>
 
@@ -2603,6 +2639,53 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
   </div>
 </div>
 
+<!-- Modal: Produto (criar / editar) -->
+<div class="modal-overlay" id="modal-produto" onclick="closeModal(event,this)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-produto-titulo">Novo Produto</span>
+      <span class="modal-close" onclick="closeModal(null,'modal-produto')">✕</span>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="m-prod-id" value="">
+      <div class="field"><label class="required">Nome</label><input class="input" id="m-prod-nome" placeholder="Ex: Vitamina C, Hidratante..."></div>
+      <div class="field">
+        <label class="required">Categoria</label>
+        <select class="input" id="m-prod-categoria">
+          <option value="Beleza">Beleza</option>
+          <option value="Saúde">Saúde</option>
+          <option value="Medicamento">Medicamento</option>
+          <option value="Higiene">Higiene</option>
+          <option value="Alimentação">Alimentação</option>
+          <option value="Limpeza">Limpeza</option>
+          <option value="Outro">Outro</option>
+        </select>
+      </div>
+      <div class="field"><label>Marca <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-marca" placeholder="Ex: Neutrogena, Himalaya..."></div>
+      <div class="field"><label>Data de validade <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-validade" type="date"></div>
+      <div class="field"><label>Data de abertura <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-abertura" type="date"></div>
+      <div class="field"><label>Duração estimada em dias <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-duracao" type="number" min="1" placeholder="Ex: 30"></div>
+      <div class="field"><label>Notificar com <b id="m-prod-days-label">7</b> dias de antecedência</label><input class="input" id="m-prod-notify" type="range" min="1" max="30" value="7" oninput="document.getElementById('m-prod-days-label').textContent=this.value"></div>
+      <div class="field">
+        <label>Importância</label>
+        <select class="input" id="m-prod-importancia">
+          <option value="baixa">Baixa</option>
+          <option value="media" selected>Média</option>
+          <option value="alta">Alta</option>
+        </select>
+      </div>
+      <div class="field" style="flex-direction:row;align-items:center;gap:10px">
+        <input type="checkbox" id="m-prod-reposicao" style="width:16px;height:16px;accent-color:var(--primary)">
+        <label for="m-prod-reposicao" style="margin:0;font-weight:400">Reposição automática</label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal(null,'modal-produto')">Cancelar</button>
+      <button class="btn btn-primary" onclick="CICLOPROD.salvar()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Novo Vínculo -->
 <div class="modal-overlay" id="modal-vinculo" onclick="closeModal(event,this)">
   <div class="modal">
@@ -2763,7 +2846,8 @@ const DEF = {
   meta: { version:'1.2', lastUpdated:'' },
   config: { nome:'Lari', icone:'🌸', tema:'azul', cicloMedio:28, duracaoMenstruacao:5 },
   diarios: {}, ciclos: [], tarefas: [], habitos: [],
-  corpo: {}, listas: [], lembretes: [], relacionamentos: [], objetivos: []
+  corpo: {}, listas: [], lembretes: [], relacionamentos: [], objetivos: [],
+  produtosCiclo: []
 };
 const ST = { get hoje(){ return hoje(); }, data: JSON.parse(JSON.stringify(DEF)) };
 
@@ -3128,7 +3212,8 @@ function showToast(msg, tipo='ok') {
   if (!c) return;
   const t = document.createElement('div');
   t.className = 'toast';
-  t.style.cssText = `background:${tipo==='ok'?'var(--success)':'var(--danger)'};color:#fff`;
+  const bgMap = { ok:'var(--success)', erro:'var(--danger)', aviso:'#D97706' };
+  t.style.cssText = `background:${bgMap[tipo]||bgMap.erro};color:#fff`;
   t.textContent = msg;
   c.appendChild(t);
   setTimeout(() => t.remove(), 2800);
@@ -4182,6 +4267,207 @@ const PRATICO = {
   }
 };
 
+/* ─── CICLOPROD ─── */
+const CICLOPROD = {
+  _calcRef(p) {
+    let validadeRef = null, duracaoRef = null;
+    if (p.dataValidade) validadeRef = new Date(p.dataValidade + 'T12:00:00');
+    if (p.dataAbertura && p.duracaoEstimada) {
+      const ab = new Date(p.dataAbertura + 'T12:00:00');
+      duracaoRef = new Date(ab); duracaoRef.setDate(duracaoRef.getDate() + parseInt(p.duracaoEstimada));
+    }
+    if (!validadeRef && !duracaoRef) return null;
+    if (validadeRef && duracaoRef) return duracaoRef < validadeRef ? { ref: duracaoRef, tipo: 'duracao' } : { ref: validadeRef, tipo: 'validade' };
+    if (validadeRef) return { ref: validadeRef, tipo: 'validade' };
+    return { ref: duracaoRef, tipo: 'duracao' };
+  },
+
+  calcularStatus(p) {
+    const r = this._calcRef(p); if (!r) return 'ok';
+    const hoje = new Date(ST.hoje + 'T12:00:00');
+    const diff = Math.ceil((r.ref - hoje) / 86400000);
+    const nd = p.notifyBeforeDays || 7;
+    if (r.tipo === 'validade') {
+      if (diff < 0) return 'expired';
+      if (diff <= nd) return 'expiring';
+    } else {
+      if (diff <= nd) return 'running_out';
+    }
+    return 'ok';
+  },
+
+  calcularDiasRestantes(p) {
+    const r = this._calcRef(p); if (!r) return null;
+    const hoje = new Date(ST.hoje + 'T12:00:00');
+    return Math.ceil((r.ref - hoje) / 86400000);
+  },
+
+  _statusLabel(st) {
+    return { ok:'Em dia', expiring:'Vencendo', expired:'Vencido', running_out:'Acabando' }[st] || 'Em dia';
+  },
+
+  _statusClass(st) {
+    return { ok:'prod-status-ok', expiring:'prod-status-expiring', expired:'prod-status-expired', running_out:'prod-status-runout' }[st] || 'prod-status-ok';
+  },
+
+  _tempoTexto(p) {
+    const dias = this.calcularDiasRestantes(p);
+    if (dias === null) return '';
+    const st = this.calcularStatus(p);
+    if (st === 'expired') return 'Vencido';
+    if (dias === 0) return 'Vence hoje';
+    if (dias < 0) return `Há ${Math.abs(dias)} dia${Math.abs(dias)!==1?'s':''} atrás`;
+    return `${dias} dia${dias!==1?'s':''} restante${dias!==1?'s':''}`;
+  },
+
+  render() {
+    const cont = document.getElementById('cicloprod-lista'); if (!cont) return;
+    const ps = ST.data.produtosCiclo || [];
+    if (!ps.length) {
+      cont.innerHTML = '<div class="empty-state">Nenhum produto ainda.<br><button class="btn btn-primary btn-sm" onclick="CICLOPROD.abrirModal()">+ Adicionar produto</button></div>';
+      return;
+    }
+    const sorted = [...ps].sort((a,b) => {
+      const ordem = { expired:0, running_out:1, expiring:2, ok:3 };
+      return (ordem[this.calcularStatus(a)]||3) - (ordem[this.calcularStatus(b)]||3);
+    });
+    cont.innerHTML = sorted.map(p => {
+      const st = this.calcularStatus(p);
+      const cls = this._statusClass(st);
+      const lbl = this._statusLabel(st);
+      const tempo = this._tempoTexto(p);
+      const meta = [p.marca, tempo].filter(Boolean).join(' · ');
+      return `<div class="prod-item">
+        <div class="prod-item-main">
+          <div class="prod-item-nome">${escHtml(p.nome)}</div>
+          ${meta ? `<div class="prod-item-meta">${escHtml(meta)}</div>` : ''}
+        </div>
+        <span class="prod-cat-tag">${escHtml(p.categoria)}</span>
+        <span class="prod-status-badge ${cls}">${lbl}</span>
+        <div class="prod-actions">
+          <span class="tr-del" onclick="CICLOPROD.abrirModal(${p.id})" title="Editar" style="cursor:pointer;font-size:.9rem">✏️</span>
+          <span class="tr-del" onclick="CICLOPROD.excluir(${p.id})">🗑️</span>
+        </div>
+      </div>`;
+    }).join('');
+  },
+
+  abrirModal(id) {
+    const titulo = document.getElementById('modal-produto-titulo');
+    const mId = document.getElementById('m-prod-id');
+    const mNome = document.getElementById('m-prod-nome');
+    const mCat = document.getElementById('m-prod-categoria');
+    const mMarca = document.getElementById('m-prod-marca');
+    const mVal = document.getElementById('m-prod-validade');
+    const mAb = document.getElementById('m-prod-abertura');
+    const mDur = document.getElementById('m-prod-duracao');
+    const mNot = document.getElementById('m-prod-notify');
+    const mDaysLbl = document.getElementById('m-prod-days-label');
+    const mImp = document.getElementById('m-prod-importancia');
+    const mRep = document.getElementById('m-prod-reposicao');
+
+    if (id) {
+      const p = (ST.data.produtosCiclo||[]).find(x => x.id === id);
+      if (!p) return;
+      if (titulo) titulo.textContent = 'Editar Produto';
+      if (mId) mId.value = id;
+      if (mNome) mNome.value = p.nome || '';
+      if (mCat) mCat.value = p.categoria || 'Beleza';
+      if (mMarca) mMarca.value = p.marca || '';
+      if (mVal) mVal.value = p.dataValidade || '';
+      if (mAb) mAb.value = p.dataAbertura || '';
+      if (mDur) mDur.value = p.duracaoEstimada || '';
+      if (mNot) { mNot.value = p.notifyBeforeDays || 7; if (mDaysLbl) mDaysLbl.textContent = mNot.value; }
+      if (mImp) mImp.value = p.importancia || 'media';
+      if (mRep) mRep.checked = !!p.reposicaoAutomatica;
+    } else {
+      if (titulo) titulo.textContent = 'Novo Produto';
+      if (mId) mId.value = '';
+      [mNome,mMarca,mVal,mAb,mDur].forEach(el => { if(el) el.value=''; });
+      if (mCat) mCat.value = 'Beleza';
+      if (mNot) { mNot.value = 7; if (mDaysLbl) mDaysLbl.textContent = '7'; }
+      if (mImp) mImp.value = 'media';
+      if (mRep) mRep.checked = false;
+    }
+    document.getElementById('modal-produto')?.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  },
+
+  salvar() {
+    const nome = document.getElementById('m-prod-nome')?.value.trim();
+    if (!nome) { showToast('Nome obrigatório', 'erro'); return; }
+    const agora = new Date().toISOString();
+    const idVal = document.getElementById('m-prod-id')?.value;
+    ST.data.produtosCiclo = ST.data.produtosCiclo || [];
+
+    if (idVal) {
+      const idx = ST.data.produtosCiclo.findIndex(x => x.id === parseInt(idVal));
+      if (idx !== -1) {
+        ST.data.produtosCiclo[idx] = {
+          ...ST.data.produtosCiclo[idx],
+          nome,
+          categoria: document.getElementById('m-prod-categoria')?.value || 'Beleza',
+          marca: document.getElementById('m-prod-marca')?.value.trim() || '',
+          dataValidade: document.getElementById('m-prod-validade')?.value || '',
+          dataAbertura: document.getElementById('m-prod-abertura')?.value || '',
+          duracaoEstimada: parseInt(document.getElementById('m-prod-duracao')?.value) || null,
+          notifyBeforeDays: parseInt(document.getElementById('m-prod-notify')?.value) || 7,
+          importancia: document.getElementById('m-prod-importancia')?.value || 'media',
+          reposicaoAutomatica: document.getElementById('m-prod-reposicao')?.checked || false,
+          modificadoEm: agora
+        };
+      }
+    } else {
+      ST.data.produtosCiclo.push({
+        id: Date.now(),
+        nome,
+        categoria: document.getElementById('m-prod-categoria')?.value || 'Beleza',
+        marca: document.getElementById('m-prod-marca')?.value.trim() || '',
+        dataValidade: document.getElementById('m-prod-validade')?.value || '',
+        dataAbertura: document.getElementById('m-prod-abertura')?.value || '',
+        duracaoEstimada: parseInt(document.getElementById('m-prod-duracao')?.value) || null,
+        notifyBeforeDays: parseInt(document.getElementById('m-prod-notify')?.value) || 7,
+        importancia: document.getElementById('m-prod-importancia')?.value || 'media',
+        reposicaoAutomatica: document.getElementById('m-prod-reposicao')?.checked || false,
+        criadoEm: agora,
+        modificadoEm: agora
+      });
+    }
+    STORAGE.save();
+    closeModal(null, 'modal-produto');
+    this.render();
+    showToast('Produto salvo!', 'ok');
+  },
+
+  excluir(id) {
+    confirmarExcluir(() => {
+      ST.data.produtosCiclo = (ST.data.produtosCiclo||[]).filter(p => p.id !== id);
+      STORAGE.save(); this.render();
+    });
+  },
+
+  checkNotificacoes() {
+    const ps = ST.data.produtosCiclo || []; if (!ps.length) return;
+    const hoje = ST.hoje;
+    const chave = `ela-prod-notif-${hoje}`;
+    const jaNotif = JSON.parse(localStorage.getItem(chave) || '[]');
+    const novos = [];
+    ps.forEach(p => {
+      if (jaNotif.includes(p.id)) return;
+      const st = this.calcularStatus(p);
+      if (st === 'ok') return;
+      novos.push(p.id);
+      const dias = this.calcularDiasRestantes(p);
+      let msg = '';
+      if (st === 'expired') msg = `Seu ${p.nome} está vencido`;
+      else if (st === 'expiring') msg = dias === 0 ? `Seu ${p.nome} vence hoje` : `Seu ${p.nome} vence em ${dias} dia${dias!==1?'s':''}`;
+      else msg = `Seu ${p.nome} está acabando`;
+      setTimeout(() => showToast(msg, 'aviso'), 500 + novos.length * 700);
+    });
+    if (novos.length) localStorage.setItem(chave, JSON.stringify([...jaNotif, ...novos]));
+  }
+};
+
 /* ─── VINCULOS ─── */
 function iconePorDescricao(desc) {
   const d = (desc || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -4625,6 +4911,8 @@ function init() {
   CORPO.carregar();
   PRATICO.renderListas();
   PRATICO.renderLembretes();
+  CICLOPROD.render();
+  CICLOPROD.checkNotificacoes();
   VINCULOS.render();
   OBJETIVOS.render();
   CHECKIN.carregar();
