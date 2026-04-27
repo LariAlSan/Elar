@@ -2831,17 +2831,35 @@ const STORAGE = {
 /* ─── GCAL (Google Calendar) ─── */
 const GCAL = {
   CLIENT_ID:'218452083023-3cc5l1fbc2o82c85639snh96a5nsekvi.apps.googleusercontent.com',
-  TOKEN: null, _client: null,
+  TOKEN: null, _client: null, _exp: 0, _refreshTimer: null,
   SCOPES:'https://www.googleapis.com/auth/calendar.events',
-  init() { const s = localStorage.getItem('ela-gcal-token'); if (s) this.TOKEN = s; },
+  init() {
+    const s = localStorage.getItem('ela-gcal-token');
+    if (s) this.TOKEN = s;
+    this._exp = parseInt(localStorage.getItem('ela-gcal-token-exp') || '0');
+    if (this.TOKEN && this._exp > Date.now()) {
+      const delay = this._exp - Date.now() - 5 * 60 * 1000;
+      if (delay > 0) this._scheduleRefresh(delay);
+    }
+  },
+  _isValid() { return !!(this.TOKEN && this._exp > Date.now() + 60000); },
+  _scheduleRefresh(ms) { clearTimeout(this._refreshTimer); this._refreshTimer = setTimeout(() => this.silentRefresh(), ms); },
+  _saveToken(r) {
+    this.TOKEN = r.access_token;
+    const exp = Date.now() + ((r.expires_in || 3600) * 1000);
+    this._exp = exp;
+    localStorage.setItem('ela-gcal-token', this.TOKEN);
+    localStorage.setItem('ela-gcal-token-exp', String(exp));
+    this._scheduleRefresh(Math.max(((r.expires_in || 3600) - 300) * 1000, 0));
+  },
   signIn() {
     if (!window.google) { showToast('Google não carregado — aguarde e tente novamente','erro'); return; }
     if (!this._client) this._client = google.accounts.oauth2.initTokenClient({
       client_id: this.CLIENT_ID, scope: this.SCOPES,
       callback: r => {
         if (r.error) { if (r.error !== 'popup_closed_by_user') showToast('Erro ao conectar Google Calendar: ' + r.error, 'erro'); return; }
-        this.TOKEN = r.access_token;
-        localStorage.setItem('ela-gcal-token', this.TOKEN);
+        this._saveToken(r);
+        localStorage.setItem('ela-gcal-prompt-date', new Date().toISOString().slice(0,10));
         showToast('Google Calendar conectado!', 'ok');
         CONFIG._renderConta();
         AGENDA._renderBanner();
@@ -2856,9 +2874,18 @@ const GCAL = {
     if (!this._client) this._client = google.accounts.oauth2.initTokenClient({
       client_id: this.CLIENT_ID, scope: this.SCOPES,
       callback: r => {
-        if (r.error) return;
-        this.TOKEN = r.access_token;
-        localStorage.setItem('ela-gcal-token', this.TOKEN);
+        if (r.error) {
+          const today = new Date().toISOString().slice(0,10);
+          if (this.TOKEN && localStorage.getItem('ela-gcal-prompt-date') !== today) {
+            this.TOKEN = null;
+            localStorage.removeItem('ela-gcal-token');
+            AGENDA._renderBanner();
+            showToast('Reconecte o Google Calendar em Configuração ⚙️','aviso');
+            localStorage.setItem('ela-gcal-prompt-date', today);
+          }
+          return;
+        }
+        this._saveToken(r);
         AGENDA._renderBanner();
         HOME.renderAgenda();
         if (document.getElementById('page-agenda')?.classList.contains('active')) AGENDA.render();
@@ -2866,11 +2893,15 @@ const GCAL = {
     });
     this._client.requestAccessToken({ prompt: '' });
   },
-  signOut() { this.TOKEN = null; localStorage.removeItem('ela-gcal-token'); showToast('Desconectado','ok'); CONFIG._renderConta(); AGENDA._renderBanner(); HOME.renderAgenda(); },
+  signOut() {
+    this.TOKEN = null; clearTimeout(this._refreshTimer);
+    localStorage.removeItem('ela-gcal-token'); localStorage.removeItem('ela-gcal-token-exp');
+    showToast('Desconectado','ok'); CONFIG._renderConta(); AGENDA._renderBanner(); HOME.renderAgenda();
+  },
   async _req(path, opts={}) {
     if (!this.TOKEN) return null;
     const r = await fetch('https://www.googleapis.com/calendar/v3' + path, { ...opts, headers:{ Authorization:`Bearer ${this.TOKEN}`, 'Content-Type':'application/json', ...(opts.headers||{}) } });
-    if (r.status === 401) { this.TOKEN = null; localStorage.removeItem('ela-gcal-token'); AGENDA._renderBanner(); this.silentRefresh(); showToast('Sessão do Google Calendar expirada — reconectando...','aviso'); return null; }
+    if (r.status === 401) { this.TOKEN = null; localStorage.removeItem('ela-gcal-token'); AGENDA._renderBanner(); return null; }
     if (!r.ok) { const err = await r.json().catch(()=>({})); showToast(`Erro ${r.status} Google Calendar${err?.error?.message ? ': ' + err.error.message : ''}`, 'erro'); return null; }
     return r.json();
   },
@@ -3702,16 +3733,28 @@ function buildHumorCalendar() {
 /* ─── Google Fit ─── */
 const GFIT = {
   CLIENT_ID: '218452083023-3cc5l1fbc2o82c85639snh96a5nsekvi.apps.googleusercontent.com',
-  TOKEN: null,
+  TOKEN: null, _client: null, _exp: 0, _refreshTimer: null,
   SCOPES: 'https://www.googleapis.com/auth/fitness.sleep.read https://www.googleapis.com/auth/fitness.activity.read',
-  _client: null,
 
   init() {
     const saved = localStorage.getItem('ela-gfit-token');
-    if (saved) {
-      this.TOKEN = saved;
+    if (saved) this.TOKEN = saved;
+    this._exp = parseInt(localStorage.getItem('ela-gfit-token-exp') || '0');
+    if (this.TOKEN && this._exp > Date.now()) {
+      const delay = this._exp - Date.now() - 5 * 60 * 1000;
+      if (delay > 0) this._scheduleRefresh(delay);
       this.refresh();
     }
+  },
+  _isValid() { return !!(this.TOKEN && this._exp > Date.now() + 60000); },
+  _scheduleRefresh(ms) { clearTimeout(this._refreshTimer); this._refreshTimer = setTimeout(() => this.silentRefresh(), ms); },
+  _saveToken(r) {
+    this.TOKEN = r.access_token;
+    const exp = Date.now() + ((r.expires_in || 3600) * 1000);
+    this._exp = exp;
+    localStorage.setItem('ela-gfit-token', this.TOKEN);
+    localStorage.setItem('ela-gfit-token-exp', String(exp));
+    this._scheduleRefresh(Math.max(((r.expires_in || 3600) - 300) * 1000, 0));
   },
 
   signIn() {
@@ -3722,8 +3765,8 @@ const GFIT = {
         scope: this.SCOPES,
         callback: async (resp) => {
           if (resp.error) { if (resp.error !== 'popup_closed_by_user') showToast('Erro ao conectar Google Fit: ' + resp.error, 'erro'); return; }
-          this.TOKEN = resp.access_token;
-          localStorage.setItem('ela-gfit-token', this.TOKEN);
+          this._saveToken(resp);
+          localStorage.setItem('ela-gfit-prompt-date', new Date().toISOString().slice(0,10));
           await this.refresh();
         }
       });
@@ -3732,8 +3775,8 @@ const GFIT = {
   },
 
   signOut() {
-    this.TOKEN = null;
-    localStorage.removeItem('ela-gfit-token');
+    this.TOKEN = null; clearTimeout(this._refreshTimer);
+    localStorage.removeItem('ela-gfit-token'); localStorage.removeItem('ela-gfit-token-exp');
     const gc = document.getElementById('gfit-connect');
     const gr = document.getElementById('gfit-row');
     if (gc) gc.style.display = '';
@@ -3751,7 +3794,7 @@ const GFIT = {
         endTimeMillis: endMs
       })
     });
-    if (!r.ok) { if (r.status === 401) { this.signOut(); showToast('Sessão do Google Fit expirada — reconecte em Configuração','aviso'); } else { const err = await r.json().catch(()=>({})); showToast(`Erro ${r.status} Google Fit${err?.error?.message ? ': ' + err.error.message : ''}`, 'erro'); } return null; }
+    if (!r.ok) { if (r.status === 401) { this.signOut(); } else { const err = await r.json().catch(()=>({})); showToast(`Erro ${r.status} Google Fit${err?.error?.message ? ': ' + err.error.message : ''}`, 'erro'); } return null; }
     return r.json();
   },
 
@@ -3768,7 +3811,7 @@ const GFIT = {
       { headers: { Authorization: 'Bearer ' + this.TOKEN } }
     );
     if (!r.ok) {
-      if (r.status === 401) { this.signOut(); showToast('Sessão do Google Fit expirada — reconecte em Configuração', 'aviso'); }
+      if (r.status === 401) { this.signOut(); }
       else { const err = await r.json().catch(() => ({})); showToast(`Erro ${r.status} Google Fit${err?.error?.message ? ': ' + err.error.message : ''}`, 'erro'); }
       return null;
     }
@@ -3873,9 +3916,16 @@ const GFIT = {
     if (!this._client) this._client = google.accounts.oauth2.initTokenClient({
       client_id: this.CLIENT_ID, scope: this.SCOPES,
       callback: async (resp) => {
-        if (resp.error) return;
-        this.TOKEN = resp.access_token;
-        localStorage.setItem('ela-gfit-token', this.TOKEN);
+        if (resp.error) {
+          const today = new Date().toISOString().slice(0,10);
+          if (this.TOKEN && localStorage.getItem('ela-gfit-prompt-date') !== today) {
+            this.signOut();
+            showToast('Reconecte o Google Fit em Configuração ⚙️','aviso');
+            localStorage.setItem('ela-gfit-prompt-date', today);
+          }
+          return;
+        }
+        this._saveToken(resp);
         await this.refresh();
       }
     });
@@ -3886,12 +3936,27 @@ const GFIT = {
 /* ─── GDRIVE ─── */
 const GDRIVE = {
   CLIENT_ID: '218452083023-3cc5l1fbc2o82c85639snh96a5nsekvi.apps.googleusercontent.com',
-  TOKEN: null, _client: null,
+  TOKEN: null, _client: null, _exp: 0, _refreshTimer: null,
   SCOPE: 'https://www.googleapis.com/auth/drive.appdata',
 
   init() {
     const s = localStorage.getItem('ela-gdrive-token');
     if (s) this.TOKEN = s;
+    this._exp = parseInt(localStorage.getItem('ela-gdrive-token-exp') || '0');
+    if (this.TOKEN && this._exp > Date.now()) {
+      const delay = this._exp - Date.now() - 5 * 60 * 1000;
+      if (delay > 0) this._scheduleRefresh(delay);
+    }
+  },
+  _isValid() { return !!(this.TOKEN && this._exp > Date.now() + 60000); },
+  _scheduleRefresh(ms) { clearTimeout(this._refreshTimer); this._refreshTimer = setTimeout(() => this.silentRefresh(), ms); },
+  _saveToken(r) {
+    this.TOKEN = r.access_token;
+    const exp = Date.now() + ((r.expires_in || 3600) * 1000);
+    this._exp = exp;
+    localStorage.setItem('ela-gdrive-token', this.TOKEN);
+    localStorage.setItem('ela-gdrive-token-exp', String(exp));
+    this._scheduleRefresh(Math.max(((r.expires_in || 3600) - 300) * 1000, 0));
   },
 
   signIn() {
@@ -3900,8 +3965,8 @@ const GDRIVE = {
       client_id: this.CLIENT_ID, scope: this.SCOPE,
       callback: async resp => {
         if (resp.error) { if (resp.error !== 'popup_closed_by_user') showToast('Erro ao conectar Drive: ' + resp.error,'erro'); return; }
-        this.TOKEN = resp.access_token;
-        localStorage.setItem('ela-gdrive-token', this.TOKEN);
+        this._saveToken(resp);
+        localStorage.setItem('ela-gdrive-prompt-date', new Date().toISOString().slice(0,10));
         showToast('Google Drive conectado ✓','ok');
         CONFIG._renderConta();
         await this.sync();
@@ -3911,8 +3976,8 @@ const GDRIVE = {
   },
 
   signOut() {
-    this.TOKEN = null;
-    localStorage.removeItem('ela-gdrive-token');
+    this.TOKEN = null; clearTimeout(this._refreshTimer);
+    localStorage.removeItem('ela-gdrive-token'); localStorage.removeItem('ela-gdrive-token-exp');
     localStorage.removeItem('ela-gdrive-fileid');
     showToast('Google Drive desconectado','ok');
     CONFIG._renderConta();
@@ -3923,9 +3988,18 @@ const GDRIVE = {
     if (!this._client) this._client = google.accounts.oauth2.initTokenClient({
       client_id: this.CLIENT_ID, scope: this.SCOPE,
       callback: async resp => {
-        if (resp.error) return;
-        this.TOKEN = resp.access_token;
-        localStorage.setItem('ela-gdrive-token', this.TOKEN);
+        if (resp.error) {
+          const today = new Date().toISOString().slice(0,10);
+          if (this.TOKEN && localStorage.getItem('ela-gdrive-prompt-date') !== today) {
+            this.TOKEN = null;
+            localStorage.removeItem('ela-gdrive-token');
+            showToast('Reconecte o Google Drive em Configuração ⚙️','aviso');
+            localStorage.setItem('ela-gdrive-prompt-date', today);
+            CONFIG._renderConta();
+          }
+          return;
+        }
+        this._saveToken(resp);
         CONFIG._renderConta();
         await this.sync();
       }
@@ -4998,12 +5072,10 @@ function init() {
   GDRIVE.init();
   CONFIG.init();
   PADROES.renderInsights();
-  // Renovação silenciosa de tokens (após 2s para GIS carregar)
-  setTimeout(() => {
-    if (GCAL.TOKEN) GCAL.silentRefresh();
-    if (GFIT.TOKEN) GFIT.silentRefresh();
-    if (localStorage.getItem('ela-gdrive-token')) GDRIVE.silentRefresh();
-  }, 2000);
+  // Renovação silenciosa de tokens — escalonada; só renova se o token expirou ou está prestes a expirar
+  setTimeout(() => { if (GCAL.TOKEN && !GCAL._isValid()) GCAL.silentRefresh(); }, 2000);
+  setTimeout(() => { if (GFIT.TOKEN && !GFIT._isValid()) GFIT.silentRefresh(); }, 3000);
+  setTimeout(() => { if (GDRIVE.TOKEN && !GDRIVE._isValid()) GDRIVE.silentRefresh(); }, 4000);
   const lastPage = localStorage.getItem('ela-page');
   if (lastPage && PAGES.includes(lastPage) && lastPage !== 'home') nav(lastPage);
   if ('serviceWorker' in navigator) {
