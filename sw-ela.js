@@ -1,4 +1,4 @@
-const CACHE = 'elar-v1.43';
+const CACHE = 'elar-v1.44';
 const ASSETS = ['./index.html', './icon.png', './manifest-ela.json'];
 
 self.addEventListener('install', e => {
