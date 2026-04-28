@@ -3086,8 +3086,14 @@ const AGENDA = {
   },
 
   async _fetchAndShowDay(ds) {
-    if (!this._cache[ds]) this._cache[ds] = await GCAL.listarDia(ds);
-    this._renderTimeline(this._cache[ds]);
+    if (GCAL.TOKEN && !this._cache[ds]) this._cache[ds] = await GCAL.listarDia(ds);
+    const locais = this._eventosLocaisParaDia(ds);
+    const todos = [...locais, ...(this._cache[ds] || [])].sort((a, b) => {
+      const ta = a.start?.dateTime || a.start?.date || '';
+      const tb = b.start?.dateTime || b.start?.date || '';
+      return ta.localeCompare(tb);
+    });
+    this._renderTimeline(todos);
   },
 
   _renderTimeline(events) {
@@ -3122,7 +3128,6 @@ const AGENDA = {
   async _renderSemana() {
     this._showView('agenda-view-semana');
     const cont = document.getElementById('agenda-view-semana');
-    if (!GCAL.TOKEN) { cont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Conecte o Google Calendar para ver seus eventos.</div>'; return; }
     cont.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted)">Carregando...</div>';
 
     const days = [];
@@ -3130,7 +3135,7 @@ const AGENDA = {
       const d = new Date(this._weekStart); d.setDate(d.getDate() + i);
       days.push(this._fmt(d));
     }
-    if (days.some(ds => !this._cache[ds])) {
+    if (GCAL.TOKEN && days.some(ds => !this._cache[ds])) {
       const events = await GCAL.listarRange(days[0], days[6]);
       days.forEach(ds => { if (!this._cache[ds]) this._cache[ds] = []; });
       events.forEach(ev => {
@@ -3146,7 +3151,8 @@ const AGENDA = {
     const cols = days.map(ds => {
       const d = new Date(ds+'T12:00:00');
       const isToday = ds === today;
-      const events = this._cache[ds] || [];
+      const locais = this._eventosLocaisParaDia(ds);
+      const events = [...locais, ...(this._cache[ds] || [])];
       const evCards = events.length
         ? events.map(ev => {
             const sd = ev.start?.dateTime;
