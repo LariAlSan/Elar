@@ -2369,6 +2369,10 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
           <div id="cfg-conta-info" class="cfg-conta-info"></div>
         </div>
         <div class="cfg-card">
+          <div class="cfg-card-title">🔔 Notificações</div>
+          <div id="cfg-notif-info" class="cfg-conta-info"></div>
+        </div>
+        <div class="cfg-card">
           <div class="cfg-card-title">🙏 Espiritualidade</div>
           <div class="cfg-row">
             <label>Orientação espiritual</label>
@@ -2621,10 +2625,6 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
             <option value="media" selected>Média</option>
             <option value="alta">Alta</option>
           </select>
-        </div>
-        <div class="field" style="flex-direction:row;align-items:center;gap:10px">
-          <input type="checkbox" id="m-prod-reposicao" style="width:16px;height:16px;accent-color:var(--primary)">
-          <label for="m-prod-reposicao" style="margin:0;font-weight:400">Reposição automática</label>
         </div>
       </details>
     </div>
@@ -3314,20 +3314,78 @@ const PADROES = {
     const el = document.getElementById('padroes-insights-content'); if (!el) return;
     const dias = this._dias(30);
     const insights = [];
-    const humores = dias.map(d => ST.data.diarios?.[d]?.humor).filter(Boolean);
-    if (humores.length >= 7) {
-      const contagemHumor = {};
-      humores.forEach(h => contagemHumor[h] = (contagemHumor[h] || 0) + 1);
-      const maisFreq = Object.entries(contagemHumor).sort((a, b) => b[1] - a[1])[0];
-      const LABEL = { radiante:'Radiante', bem:'Bem', neutra:'Neutra', pesada:'Pesada', dificil:'Dificil' };
-      insights.push({ icon: '🌙', text: `Seu humor mais frequente nos últimos 30 dias foi <strong>${LABEL[maisFreq[0]] || maisFreq[0]}</strong> (${maisFreq[1]} dias).` });
+    const BOM = ['radiante','bem'];
+    const RUIM = ['pesada','dificil'];
+    const HUM_LABEL = { radiante:'Radiante', bem:'Bem', neutra:'Neutra', pesada:'Pesada', dificil:'Difícil' };
+    const FASE_LABEL = { menstrual:'menstrual', folicular:'folicular', fertil:'fértil', ovulacao:'ovulação', lutea:'lútea' };
+
+    const entradas = dias.map(d => ({
+      d,
+      humor: ST.data.diarios?.[d]?.humor,
+      fase: ST.data.diarios?.[d]?.faseCiclo,
+      sono: parseFloat(ST.data.corpo?.[d]?.sono) || 0
+    }));
+    const comHumor = entradas.filter(x => x.humor);
+
+    // 1. Humor mais frequente
+    if (comHumor.length >= 7) {
+      const cnt = {};
+      comHumor.forEach(x => cnt[x.humor] = (cnt[x.humor] || 0) + 1);
+      const [top, n] = Object.entries(cnt).sort((a,b) => b[1]-a[1])[0];
+      insights.push({ icon:'🌙', text:`Seu humor mais frequente nos últimos 30 dias foi <strong>${HUM_LABEL[top]||top}</strong> (${n} dias).` });
     }
+
+    // 2. Fase do ciclo × humor
+    if (comHumor.length >= 7) {
+      const porFase = {};
+      comHumor.filter(x => x.fase).forEach(x => {
+        if (!porFase[x.fase]) porFase[x.fase] = { bom:0, total:0 };
+        porFase[x.fase].total++;
+        if (BOM.includes(x.humor)) porFase[x.fase].bom++;
+      });
+      const fasesArr = Object.entries(porFase).filter(([,v]) => v.total >= 3);
+      if (fasesArr.length >= 2) {
+        const melhor = [...fasesArr].sort((a,b) => (b[1].bom/b[1].total)-(a[1].bom/a[1].total))[0];
+        const pct = Math.round(melhor[1].bom / melhor[1].total * 100);
+        if (pct >= 50) insights.push({ icon:'🔄', text:`Você tende a se sentir <strong>melhor na fase ${FASE_LABEL[melhor[0]]||melhor[0]}</strong> (${pct}% de dias com humor bom).` });
+      }
+    }
+
+    // 3. Hábitos × humor
     const hs = ST.data.habitos || [];
-    if (hs.length) {
-      const melhor = hs.map(h => ({ h, pct: dias.filter(d => h.registros?.[d]).length })).sort((a, b) => b.pct - a.pct)[0];
-      if (melhor?.pct > 0) insights.push({ icon: '💪', text: `Seu hábito mais consistente é <strong>${melhor.h.icone} ${escHtml(melhor.h.nome)}</strong> (${Math.round(melhor.pct / 30 * 100)}% de consistência).` });
+    if (hs.length && comHumor.length >= 7) {
+      const diasBom = comHumor.filter(x => BOM.includes(x.humor)).map(x => x.d);
+      const diasRuim = comHumor.filter(x => RUIM.includes(x.humor)).map(x => x.d);
+      const taxa = list => {
+        if (!list.length) return 0;
+        return Math.round(hs.reduce((a,h) => a + list.filter(d => h.registros?.[d]).length, 0) / (list.length * hs.length) * 100);
+      };
+      const tBom = taxa(diasBom), tRuim = taxa(diasRuim);
+      if (diasBom.length >= 3 && diasRuim.length >= 3 && Math.abs(tBom - tRuim) >= 15) {
+        insights.push({ icon:'💪', text:`Em dias de humor bom você completa <strong>${tBom}% dos hábitos</strong>. Em dias difíceis, apenas <strong>${tRuim}%</strong>.` });
+      } else {
+        const melhor = hs.map(h => ({ h, n: dias.filter(d => h.registros?.[d]).length })).sort((a,b) => b.n-a.n)[0];
+        if (melhor?.n > 0) insights.push({ icon:'💪', text:`Seu hábito mais consistente é <strong>${melhor.h.icone} ${escHtml(melhor.h.nome)}</strong> (${Math.round(melhor.n/30*100)}%).` });
+      }
+    } else if (hs.length) {
+      const melhor = hs.map(h => ({ h, n: dias.filter(d => h.registros?.[d]).length })).sort((a,b) => b.n-a.n)[0];
+      if (melhor?.n > 0) insights.push({ icon:'💪', text:`Seu hábito mais consistente é <strong>${melhor.h.icone} ${escHtml(melhor.h.nome)}</strong> (${Math.round(melhor.n/30*100)}%).` });
     }
-    if (!insights.length) insights.push({ icon: '📊', text: 'Continue registrando seus dados diariamente para ver insights personalizados aqui.' });
+
+    // 4. Sono × humor
+    const comSono = comHumor.filter(x => x.sono > 0);
+    if (comSono.length >= 7) {
+      const ruimSono = comSono.filter(x => RUIM.includes(x.humor));
+      if (ruimSono.length >= 3) {
+        const mediaGeral = comSono.reduce((a,x) => a+x.sono, 0) / comSono.length;
+        const mediaRuim = ruimSono.reduce((a,x) => a+x.sono, 0) / ruimSono.length;
+        if (mediaGeral - mediaRuim >= 0.5) {
+          insights.push({ icon:'😴', text:`Nos dias difíceis você dormiu em média <strong>${mediaRuim.toFixed(1)}h</strong> — abaixo da sua média de <strong>${mediaGeral.toFixed(1)}h</strong>.` });
+        }
+      }
+    }
+
+    if (!insights.length) insights.push({ icon:'📊', text:'Continue registrando seus dados diariamente para ver insights personalizados aqui.' });
     el.innerHTML = insights.map(i => `<div class="pattern-insight"><span class="pi-icon">${i.icon}</span><span class="pi-text">${i.text}</span></div>`).join('');
   }
 };
@@ -4583,7 +4641,6 @@ const CICLOPROD = {
           duracaoEstimada: parseInt(document.getElementById('m-prod-duracao')?.value) || null,
           notifyBeforeDays: parseInt(document.getElementById('m-prod-notify')?.value) || 7,
           importancia: document.getElementById('m-prod-importancia')?.value || 'media',
-          reposicaoAutomatica: document.getElementById('m-prod-reposicao')?.checked || false,
           modificadoEm: agora
         };
       }
@@ -4598,7 +4655,6 @@ const CICLOPROD = {
         duracaoEstimada: parseInt(document.getElementById('m-prod-duracao')?.value) || null,
         notifyBeforeDays: parseInt(document.getElementById('m-prod-notify')?.value) || 7,
         importancia: document.getElementById('m-prod-importancia')?.value || 'media',
-        reposicaoAutomatica: document.getElementById('m-prod-reposicao')?.checked || false,
         criadoEm: agora,
         modificadoEm: agora
       });
@@ -4632,7 +4688,10 @@ const CICLOPROD = {
       if (st === 'expired') msg = `Seu ${p.nome} está vencido`;
       else if (st === 'expiring') msg = dias === 0 ? `Seu ${p.nome} vence hoje` : `Seu ${p.nome} vence em ${dias} dia${dias!==1?'s':''}`;
       else msg = `Seu ${p.nome} está acabando`;
-      setTimeout(() => showToast(msg, 'aviso'), 500 + novos.length * 700);
+      setTimeout(() => {
+        showToast(msg, 'aviso');
+        NOTIF.mostrar('🧴 ELAR', msg, `ela-prod-${p.id}`);
+      }, 500 + novos.length * 700);
     });
     if (novos.length) localStorage.setItem(chave, JSON.stringify([...jaNotif, ...novos]));
   }
@@ -4674,7 +4733,7 @@ const VINCULOS = {
     const icone=iconePorDescricao(desc);
     const datasImportantes=data&&desc?[{ id:Date.now(), data, descricao:desc, icone }]:[];
     ST.data.relacionamentos=ST.data.relacionamentos||[];
-    ST.data.relacionamentos.push({ id:Date.now(), nome, tipo, datasImportantes, anotacoes:[] });
+    ST.data.relacionamentos.push({ id:Date.now(), nome, tipo, datasImportantes });
     STORAGE.save();
     if(data&&desc&&GCAL.TOKEN){
       const titulo=`${icone} ${desc} de ${nome}`;
@@ -4917,6 +4976,55 @@ function applyTheme(key) {
   );
 }
 
+/* ─── Notificações ─── */
+const NOTIF = {
+  permissao() { return (typeof Notification !== 'undefined') ? Notification.permission : 'denied'; },
+
+  async pedirPermissao() {
+    if (typeof Notification === 'undefined') { showToast('Notificações não suportadas neste navegador', 'aviso'); return; }
+    const r = await Notification.requestPermission();
+    CONFIG.renderNotificacoes();
+    if (r === 'granted') { showToast('Notificações ativadas!', 'ok'); this.agendarLembretesHoje(); }
+    else showToast('Permissão negada pelo navegador', 'aviso');
+  },
+
+  mostrar(titulo, corpo, tag) {
+    if (this.permissao() !== 'granted') return;
+    try {
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type:'NOTIFY', title:titulo, body:corpo, tag: tag||'ela-notif' });
+      } else {
+        new Notification(titulo, { body: corpo, icon:'./icon.png', tag: tag||'ela-notif' });
+      }
+    } catch(e) {}
+  },
+
+  agendarLembretesHoje() {
+    if (this.permissao() !== 'granted') return;
+    const hoje = ST.hoje;
+    const agora = new Date();
+    const chave = `ela-lem-notif-${hoje}`;
+    const jaDisp = JSON.parse(localStorage.getItem(chave) || '[]');
+    const diaSemana = agora.getDay();
+    (ST.data.lembretes || []).forEach(l => {
+      if (!l.hora || jaDisp.includes(l.id)) return;
+      const freq = l.frequencia || 'Diário';
+      if (freq === 'Segunda a sexta' && (diaSemana === 0 || diaSemana === 6)) return;
+      if (freq === 'Semanal' && diaSemana !== 1) return;
+      if (freq === 'Mensal' && agora.getDate() !== 1) return;
+      const [hh, mm] = l.hora.split(':').map(Number);
+      const alvo = new Date(agora); alvo.setHours(hh, mm, 0, 0);
+      const delay = alvo - agora;
+      if (delay < 0 || delay > 23 * 60 * 60 * 1000) return;
+      setTimeout(() => {
+        this.mostrar(`🔔 ${l.texto}`, l.frequencia || 'Lembrete', `ela-lem-${l.id}`);
+        const j = JSON.parse(localStorage.getItem(chave) || '[]'); j.push(l.id);
+        localStorage.setItem(chave, JSON.stringify(j));
+      }, delay);
+    });
+  }
+};
+
 /* ─── CONFIG ─── */
 const CONFIG = {
   _icons: ['🌸','💜','✨','🌿','🎯','💙','⭐','🌺','🦋','💫','🌙','💎','🔮','🌊','🕊️','E','L','A'],
@@ -4931,6 +5039,23 @@ const CONFIG = {
     this._renderThemes(ST.data?.config?.tema || 'azul');
     this._renderReligiao(ST.data?.config?.religiao || '');
     this._renderConta();
+    this.renderNotificacoes();
+  },
+
+  renderNotificacoes() {
+    const el = document.getElementById('cfg-notif-info'); if (!el) return;
+    if (typeof Notification === 'undefined') {
+      el.innerHTML = '<span style="color:var(--text-muted);font-size:.85rem">Não suportado neste navegador.</span>';
+      return;
+    }
+    const perm = Notification.permission;
+    if (perm === 'granted') {
+      el.innerHTML = `<div class="cfg-conta-row"><span style="color:var(--success)">✓</span> <strong>Ativas</strong> <span style="color:var(--text-muted);font-size:.78rem">lembretes e alertas de produtos</span></div>`;
+    } else if (perm === 'denied') {
+      el.innerHTML = `<div class="cfg-conta-row"><span style="color:var(--danger)">✕</span> <span style="color:var(--text-muted)">Bloqueadas pelo navegador</span> <span style="font-size:.78rem;color:var(--text-muted)">— libere nas configurações do browser</span></div>`;
+    } else {
+      el.innerHTML = `<div class="cfg-conta-row"><span style="color:var(--text-muted)">Desativadas</span> <button class="btn btn-ghost btn-sm" onclick="NOTIF.pedirPermissao()">Ativar</button></div>`;
+    }
   },
 
   _renderIcons(current) {
@@ -5083,6 +5208,7 @@ function init() {
   PRATICO.renderLembretes();
   CICLOPROD.render();
   CICLOPROD.checkNotificacoes();
+  NOTIF.agendarLembretesHoje();
   VINCULOS.render();
   OBJETIVOS.render();
   CHECKIN.carregar();
