@@ -1,4 +1,4 @@
-const CACHE = 'elar-v1.51';
+const CACHE = 'elar-v1.53';
 const ASSETS = ['./index.html', './icon.png', './manifest-ela.json'];
 
 self.addEventListener('install', e => {
@@ -13,6 +13,17 @@ self.addEventListener('activate', e => {
     )
   );
   self.clients.claim();
+});
+
+self.addEventListener('message', e => {
+  if (e.data?.type === 'NOTIFY') {
+    self.registration.showNotification(e.data.title || 'ELAR', {
+      body: e.data.body || '',
+      icon: './icon.png',
+      badge: './icon.png',
+      tag: e.data.tag || 'ela-notif'
+    });
+  }
 });
 
 self.addEventListener('fetch', e => {
