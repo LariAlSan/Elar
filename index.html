@@ -2795,7 +2795,7 @@ const DEF = {
   config: { nome:'Lari', icone:'🌸', tema:'azul', cicloMedio:28, duracaoMenstruacao:5 },
   diarios: {}, ciclos: [], tarefas: [], habitos: [],
   corpo: {}, listas: [], lembretes: [], relacionamentos: [], objetivos: [],
-  produtosCiclo: []
+  produtosCiclo: [], eventosLocais: []
 };
 const ST = { get hoje(){ return hoje(); }, data: JSON.parse(JSON.stringify(DEF)) };
 
@@ -2827,7 +2827,8 @@ const STORAGE = {
     try {
       ST.data.meta.lastUpdated = new Date().toISOString();
       localStorage.setItem(this.KEY, JSON.stringify(ST.data));
-      GDRIVE.upload();
+      clearTimeout(this._driveTimer);
+      this._driveTimer = setTimeout(() => GDRIVE.upload(), 2500);
     } catch(e) { console.warn('STORAGE.save:', e); }
   },
   export() {
@@ -3017,7 +3018,7 @@ const AGENDA = {
 
   _renderBanner() {
     const banner = document.getElementById('gcal-connect-banner');
-    if (banner) banner.style.display = GCAL.TOKEN ? 'none' : '';
+    if (banner) banner.style.display = (GCAL.TOKEN || (ST.data.eventosLocais||[]).length > 0) ? 'none' : '';
   },
 
   _showView(id) {
@@ -3047,15 +3048,26 @@ const AGENDA = {
   },
 
   /* ── MODO DIA ── */
+  _eventosLocaisParaDia(dateStr) {
+    return (ST.data.eventosLocais || [])
+      .filter(e => e.data === dateStr)
+      .map(e => ({ _local: true, _id: e.id, summary: e.titulo, start: { dateTime: e.horaInicio ? `${e.data}T${e.horaInicio}:00` : null }, end: { dateTime: e.horaFim ? `${e.data}T${e.horaFim}:00` : null }, location: e.local }));
+  },
+
   async _renderDia() {
     this._showView('agenda-view-dia');
     this._renderDayStrip();
-    if (!GCAL.TOKEN) { this._renderTimeline([]); return; }
+    const locais = this._eventosLocaisParaDia(this._selected);
+    if (!GCAL.TOKEN) { this._renderTimeline(locais); return; }
     this._renderTimeline(null);
     if (!this._cache[this._selected]) {
       this._cache[this._selected] = await GCAL.listarDia(this._selected);
     }
-    this._renderTimeline(this._cache[this._selected]);
+    const todos = [...locais, ...this._cache[this._selected]].sort((a,b) => {
+      const ta = a.start?.dateTime || '9999', tb = b.start?.dateTime || '9999';
+      return ta < tb ? -1 : 1;
+    });
+    this._renderTimeline(todos);
   },
 
   _renderDayStrip() {
@@ -3082,18 +3094,25 @@ const AGENDA = {
     const el = document.querySelector('#agenda-view-dia .agenda-timeline');
     if (!el) return;
     if (events === null) { el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted)">Carregando...</div>'; return; }
-    if (!GCAL.TOKEN) { el.innerHTML = '<div style="text-align:center;padding:40px 16px;color:var(--text-muted)">Conecte o Google Calendar para ver seus eventos.</div>'; return; }
-    if (!events.length) { el.innerHTML = '<div style="text-align:center;padding:40px 16px;color:var(--text-muted)">Nenhum evento neste dia.</div>'; return; }
+    if (!events.length) {
+      el.innerHTML = `<div style="text-align:center;padding:40px 16px;color:var(--text-muted)">Nenhum evento neste dia.<br><button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="document.getElementById('ev-data').value='${this._selected}';openModal('modal-evento')">+ Novo evento</button></div>`;
+      return;
+    }
     el.innerHTML = events.map(ev => {
       const sd = ev.start?.dateTime, ed = ev.end?.dateTime;
       const time = sd ? sd.slice(11,16) + (ed ? ' – ' + ed.slice(11,16) : '') : 'Dia inteiro';
       const loc = ev.location ? ` · ${ev.location}` : '';
+      const isLocal = !!ev._local;
+      const badge = isLocal ? `<span style="font-size:.65rem;background:var(--bg-card2);color:var(--text-muted);border-radius:4px;padding:1px 5px;margin-left:4px">local</span>` : '';
+      const del = isLocal ? `<span style="cursor:pointer;color:var(--text-muted);font-size:.8rem;margin-left:auto" onclick="excluirEventoLocal(${ev._id})">🗑️</span>` : '';
       return `<div class="timeline-slot">
         <span class="timeline-time">${time.split(' – ')[0]}</span>
-        <div class="timeline-line"><div class="timeline-dot" style="background:var(--primary)"></div><div class="timeline-fill"></div></div>
-        <div class="timeline-event">
-          <div class="ev-title">${escHtml(ev.summary||'(sem título)')}</div>
-          <div class="ev-meta">${escHtml(time)}${escHtml(loc)}</div>
+        <div class="timeline-line"><div class="timeline-dot" style="background:${isLocal?'var(--accent)':'var(--primary)'}"></div><div class="timeline-fill"></div></div>
+        <div class="timeline-event" style="display:flex;align-items:flex-start;gap:4px">
+          <div style="flex:1">
+            <div class="ev-title">${escHtml(ev.summary||'(sem título)')}${badge}</div>
+            <div class="ev-meta">${escHtml(time)}${escHtml(loc)}</div>
+          </div>${del}
         </div>
       </div>`;
     }).join('');
@@ -3191,7 +3210,9 @@ const AGENDA = {
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
       const isToday = ds === today;
-      const events = this._cache[ds] || [];
+      const locais = this._eventosLocaisParaDia(ds);
+      const gcal = this._cache[ds] || [];
+      const events = [...locais, ...gcal];
       const maxShow = 2;
       const chips = events.slice(0,maxShow).map(ev =>
         `<span class="mc-ev-chip">${escHtml(ev.summary||'(sem título)')}</span>`
@@ -3212,24 +3233,41 @@ async function salvarEvento() {
   const titulo = document.getElementById('ev-titulo').value.trim();
   const data   = document.getElementById('ev-data').value;
   if (!titulo || !data) { showToast('Título e data são obrigatórios', 'erro'); return; }
-  if (!GCAL.TOKEN) { showToast('Conecte o Google Calendar primeiro', 'erro'); return; }
   const hi    = document.getElementById('ev-hi').value;
   const hf    = document.getElementById('ev-hf').value;
   const local = document.getElementById('ev-local').value.trim();
   const desc  = document.getElementById('ev-desc').value.trim();
+
+  if (!GCAL.TOKEN) {
+    // Salvar localmente
+    ST.data.eventosLocais = ST.data.eventosLocais || [];
+    ST.data.eventosLocais.push({ id: Date.now(), titulo, data, horaInicio: hi, horaFim: hf, local, descricao: desc, criadoEm: new Date().toISOString() });
+    STORAGE.save();
+    showToast('Evento salvo localmente', 'ok');
+    closeModal(null, 'modal-evento');
+    ['ev-titulo','ev-data','ev-hi','ev-hf','ev-local','ev-desc'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    if (AGENDA._selected === data) AGENDA.render(data);
+    return;
+  }
+
   const ok = await GCAL.criar(titulo, data, hi, hf, desc, local);
   if (ok) {
     showToast('Evento criado!', 'ok');
     closeModal(null, 'modal-evento');
     ['ev-titulo','ev-data','ev-hi','ev-hf','ev-local','ev-desc'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    delete this._cache[data];
+    delete AGENDA._cache[data];
     if (AGENDA._selected === data) AGENDA.render(data);
-  } else if (!GCAL.TOKEN) {
-    showToast('Sessão expirada. Reconecte o Google Calendar.', 'erro');
-    AGENDA._renderBanner();
   } else {
     showToast('Erro ao criar evento', 'erro');
   }
+}
+
+function excluirEventoLocal(id) {
+  confirmarExcluir(() => {
+    ST.data.eventosLocais = (ST.data.eventosLocais || []).filter(e => e.id !== id);
+    STORAGE.save();
+    AGENDA.render(AGENDA._selected);
+  });
 }
 
 /* ─── Confirmação de exclusão ─── */
@@ -3263,20 +3301,46 @@ const PADROES = {
   renderEnergia() {
     const el = document.getElementById('padroes-energia-content'); if (!el) return;
     const dias = this._dias(30);
-    const CORES = { baixa: '#EF9A9A', media: '#FFD54F', alta: '#A5D6A7' };
-    const LABELS = { baixa: 'Baixa', media: 'Media', alta: 'Alta' };
+    const CORES = { baixa: 'var(--danger)', media: 'var(--warning)', alta: 'var(--success)' };
+    const LABELS = { baixa: 'Baixa', media: 'Média', alta: 'Alta' };
     const contagem = { baixa: 0, media: 0, alta: 0 };
     dias.forEach(d => { const e = ST.data.diarios?.[d]?.energia; if (e) contagem[e] = (contagem[e] || 0) + 1; });
     const total = Object.values(contagem).reduce((a, b) => a + b, 0);
     if (!total) { el.innerHTML = '<div class="empty-state">Nenhum registro de energia ainda.<br>Faça o check-in diário para ver seus padrões.</div>'; return; }
-    el.innerHTML = Object.entries(contagem).map(([k, v]) => {
+
+    const barras = Object.entries(contagem).map(([k, v]) => {
       const pct = total ? Math.round(v / total * 100) : 0;
       return `<div class="padrao-bar-row">
         <span class="padrao-bar-label">${LABELS[k] || k}</span>
-        <div class="padrao-bar-track"><div class="padrao-bar-fill" style="width:${pct}%;background:${CORES[k] || 'var(--primary)'}"></div></div>
+        <div class="padrao-bar-track"><div class="padrao-bar-fill" style="width:${pct}%;background:${CORES[k]}"></div></div>
         <span class="padrao-bar-pct">${pct}%</span>
       </div>`;
-    }).join('') + `<div style="font-size:.75rem;color:var(--text-muted);margin-top:10px">${total} de 30 dias registrados</div>`;
+    }).join('');
+
+    // Tendência semanal: dominante por semana (semana 1 = mais recente)
+    const semanas = [[0,7],[7,14],[14,21],[21,28]].map(([s,e], i) => {
+      const bloco = dias.slice(s, e);
+      const cnt = {};
+      bloco.forEach(d => { const en = ST.data.diarios?.[d]?.energia; if (en) cnt[en] = (cnt[en]||0)+1; });
+      const dominante = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0]?.[0] || null;
+      return { label: `Sem ${4-i}`, dominante };
+    }).reverse();
+
+    const tendencia = `<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+      <div style="font-size:.72rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tendência por semana</div>
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        ${semanas.map(s => {
+          const cor = s.dominante ? CORES[s.dominante] : 'var(--border)';
+          const h = s.dominante === 'alta' ? 40 : s.dominante === 'media' ? 26 : s.dominante === 'baixa' ? 14 : 6;
+          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div style="width:100%;height:${h}px;background:${cor};border-radius:4px 4px 0 0;min-height:4px"></div>
+            <span style="font-size:.65rem;color:var(--text-muted)">${s.label}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+
+    el.innerHTML = barras + `<div style="font-size:.75rem;color:var(--text-muted);margin-top:10px">${total} de 30 dias registrados</div>` + tendencia;
   },
   renderCiclo() {
     const el = document.getElementById('padroes-ciclo-content'); if (!el) return;
@@ -3385,6 +3449,15 @@ const PADROES = {
       }
     }
 
+    // 5. Emoções mais frequentes
+    const todasEmocoes = dias.flatMap(d => ST.data.diarios?.[d]?.emocoes || []).filter(Boolean);
+    if (todasEmocoes.length >= 5) {
+      const cntEm = {};
+      todasEmocoes.forEach(e => cntEm[e] = (cntEm[e]||0)+1);
+      const top3 = Object.entries(cntEm).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([e])=>e);
+      insights.push({ icon:'💭', text:`Suas emoções mais frequentes foram: <strong>${top3.map(escHtml).join('</strong>, <strong>')}</strong>.` });
+    }
+
     if (!insights.length) insights.push({ icon:'📊', text:'Continue registrando seus dados diariamente para ver insights personalizados aqui.' });
     el.innerHTML = insights.map(i => `<div class="pattern-insight"><span class="pi-icon">${i.icon}</span><span class="pi-text">${i.text}</span></div>`).join('');
   }
@@ -3475,6 +3548,11 @@ function closeModal(event, idOrEl) {
   el?.classList.remove('open');
   document.body.style.overflow = '';
 }
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const aberto = document.querySelector('.modal-overlay.open');
+  if (aberto) { aberto.classList.remove('open'); document.body.style.overflow = ''; }
+});
 function selectEmoji(pickerId, hiddenId, emoji, el) {
   document.querySelectorAll('#'+pickerId+' .ep-chip').forEach(c=>c.classList.remove('selected'));
   el.classList.add('selected');
@@ -3559,10 +3637,20 @@ const CICLO = {
   mes: new Date().getMonth(),
   ano: new Date().getFullYear(),
 
+  _cmReal() {
+    const ciclos = ST.data.ciclos || [];
+    if (ciclos.length < 3) return ST.data.config?.cicloMedio || 28;
+    const sorted = [...ciclos].sort((a,b) => a.dataInicio < b.dataInicio ? -1 : 1);
+    const intervalos = sorted.slice(1).map((c,i) =>
+      Math.round((new Date(c.dataInicio+'T12:00:00') - new Date(sorted[i].dataInicio+'T12:00:00')) / 86400000)
+    ).filter(n => n > 14 && n < 60);
+    return intervalos.length ? Math.round(intervalos.reduce((a,b)=>a+b,0)/intervalos.length) : (ST.data.config?.cicloMedio || 28);
+  },
+
   _computarFases() {
     const fases = {}, fluxo = {};
     const ciclos = ST.data.ciclos || [];
-    const cm = ST.data.config?.cicloMedio || 28;
+    const cm = this._cmReal();
     const dm = ST.data.config?.duracaoMenstruacao || 5;
     ciclos.forEach(c => {
       if (!c.dataInicio) return;
@@ -3666,7 +3754,7 @@ const CICLO = {
     const ciclos = ST.data.ciclos || [];
     if (!ciclos.length) return;
     const ultimo = ciclos[ciclos.length-1];
-    const cm = ST.data.config?.cicloMedio || 28;
+    const cm = this._cmReal();
     const ultimoIni = new Date(ultimo.dataInicio + 'T12:00:00');
     const hoje = new Date();
     // Projetar ciclos até proxMens ser no futuro
@@ -3686,7 +3774,12 @@ const CICLO = {
     el('prev-ovulacao', fmt(proxOvul));
     el('prev-ovulacao-dias', diasAte(proxOvul) > 0 ? `em ${diasAte(proxOvul)} dias` : 'hoje');
     const sub = document.getElementById('ciclo-subtitle');
-    if (sub) { const dia = Math.round((hoje - ultimoIni) / 86400000) + 1; sub.textContent = `Ciclo atual: dia ${dia} · ${this._faseNome(fases[ST.hoje])}`; }
+    if (sub) {
+      const dia = Math.round((hoje - ultimoIni) / 86400000) + 1;
+      const usandoHistorico = (ST.data.ciclos||[]).length >= 3;
+      const sufixo = usandoHistorico ? ` · ciclo médio real: ${cm}d` : '';
+      sub.textContent = `Ciclo atual: dia ${dia} · ${this._faseNome(fases[ST.hoje])}${sufixo}`;
+    }
   },
 
   _faseNome(f) { return { menstrual:'Fase menstrual', folicular:'Fase folicular', ovulacao:'Ovulação', fertil:'Janela fértil', lutea:'Fase lútea' }[f] || 'Fase não registrada'; },
@@ -3988,6 +4081,7 @@ const GFIT = {
       CORPO.syncFromGFit(sono, ativ);
     } catch(e) {
       console.warn('GFIT.refresh:', e);
+      showToast('Erro ao carregar dados do Google Fit', 'aviso');
     }
   },
   silentRefresh() {
@@ -4130,7 +4224,7 @@ const GDRIVE = {
         const { id } = await r.json();
         localStorage.setItem('ela-gdrive-fileid', id);
       }
-    } catch(e) { console.warn('GDRIVE.upload:', e); }
+    } catch(e) { console.warn('GDRIVE.upload:', e); showToast('Falha ao sincronizar com Drive', 'aviso'); }
   },
 
   async download() {
@@ -4357,11 +4451,23 @@ const CORPO = {
   },
   syncFromGFit(sleep, activity) {
     const d = ST.data.corpo?.[ST.hoje] || {};
-    let changed = false;
-    if (sleep?.horas) { d.sono = parseFloat(sleep.horas.toFixed(1)); const e=document.getElementById('corpo-sono'); if(e) e.value=d.sono; changed=true; }
-    if (activity?.passos) { d.passos = activity.passos; const e=document.getElementById('corpo-passos'); if(e) e.value=d.passos; changed=true; }
+    let changed = false, sobrescreveu = false;
+    if (sleep?.horas) {
+      const novoSono = parseFloat(sleep.horas.toFixed(1));
+      if (d.sono && d.sono !== novoSono) sobrescreveu = true;
+      d.sono = novoSono; const e=document.getElementById('corpo-sono'); if(e) e.value=d.sono; changed=true;
+    }
+    if (activity?.passos) {
+      if (d.passos && d.passos !== activity.passos) sobrescreveu = true;
+      d.passos = activity.passos; const e=document.getElementById('corpo-passos'); if(e) e.value=d.passos; changed=true;
+    }
     if (activity?.minutosAtivos) { d.atividade = activity.minutosAtivos; const e=document.getElementById('corpo-atividade'); if(e) e.value=d.atividade; changed=true; }
-    if (changed) { if(!ST.data.corpo) ST.data.corpo={}; ST.data.corpo[ST.hoje]={...d}; STORAGE.save(); this.renderHist(); }
+    if (changed) {
+      if(!ST.data.corpo) ST.data.corpo={};
+      ST.data.corpo[ST.hoje]={...d};
+      STORAGE.save(); this.renderHist();
+      if (sobrescreveu) showToast('Google Fit atualizou seus dados de sono e atividade', 'aviso');
+    }
   },
   _renderFase() {
     const el=document.getElementById('corpo-fase-ciclo'); if(!el) return;
@@ -4592,7 +4698,7 @@ const CICLOPROD = {
     const mNot = document.getElementById('m-prod-notify');
     const mDaysLbl = document.getElementById('m-prod-days-label');
     const mImp = document.getElementById('m-prod-importancia');
-    const mRep = document.getElementById('m-prod-reposicao');
+    const details = document.querySelector('#modal-produto .field-group-optional');
 
     if (id) {
       const p = (ST.data.produtosCiclo||[]).find(x => x.id === id);
@@ -4607,7 +4713,8 @@ const CICLOPROD = {
       if (mDur) mDur.value = p.duracaoEstimada || '';
       if (mNot) { mNot.value = p.notifyBeforeDays || 7; if (mDaysLbl) mDaysLbl.textContent = mNot.value; }
       if (mImp) mImp.value = p.importancia || 'media';
-      if (mRep) mRep.checked = !!p.reposicaoAutomatica;
+      // Abrir <details> automaticamente se há campos opcionais preenchidos
+      if (details) details.toggleAttribute('open', !!(p.marca || p.dataAbertura || p.duracaoEstimada));
     } else {
       if (titulo) titulo.textContent = 'Novo Produto';
       if (mId) mId.value = '';
@@ -4615,7 +4722,7 @@ const CICLOPROD = {
       if (mCat) mCat.value = 'Beleza';
       if (mNot) { mNot.value = 7; if (mDaysLbl) mDaysLbl.textContent = '7'; }
       if (mImp) mImp.value = 'media';
-      if (mRep) mRep.checked = false;
+      if (details) details.removeAttribute('open');
     }
     document.getElementById('modal-produto')?.classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -4899,9 +5006,49 @@ const HOME = {
     }).join('');
   },
   renderInsight() {
-    const d=ST.data.diarios?.[ST.hoje]; const fase=d?.faseCiclo;
-    const insightEl=document.querySelector('.insight-text'); if(!insightEl) return;
-    insightEl.innerHTML=`<strong>${fase?this.FASE_LABEL[fase]||fase:'Fase do ciclo'}</strong> — ${this.INSIGHTS[fase]||'Faça seu check-in para receber insights personalizados.'}`;
+    const d = ST.data.diarios?.[ST.hoje];
+    const fase = d?.faseCiclo;
+    const insightEl = document.querySelector('.insight-text'); if (!insightEl) return;
+
+    if (!fase) {
+      insightEl.innerHTML = `Faça seu <strong>check-in</strong> para receber um insight do dia.`;
+      return;
+    }
+
+    const nomeLabel = this.FASE_LABEL[fase] || fase;
+    const fallback = this.INSIGHTS[fase] || '';
+    const BOM = ['radiante', 'bem'];
+
+    // Últimos 60 dias na mesma fase com humor registrado
+    const diasFase = Array.from({length:60}, (_,i) => {
+      const dt = new Date(ST.hoje+'T12:00:00'); dt.setDate(dt.getDate()-i-1);
+      return dt.toISOString().slice(0,10);
+    }).filter(dt => {
+      const reg = ST.data.diarios?.[dt];
+      return reg?.faseCiclo === fase && reg?.humor;
+    });
+
+    let texto;
+    if (diasFase.length >= 3) {
+      const humores = diasFase.map(dt => ST.data.diarios[dt].humor);
+      const pctBom = Math.round(humores.filter(h => BOM.includes(h)).length / humores.length * 100);
+      if (pctBom >= 65) {
+        texto = `<strong>${nomeLabel}</strong> — nos seus registros, você costuma se sentir bem nessa fase (${pctBom}% dos dias). Aproveite.`;
+      } else if (pctBom <= 30) {
+        texto = `<strong>${nomeLabel}</strong> — essa fase costuma ser mais pesada para você. Priorize descanso e gentileza consigo.`;
+      } else {
+        texto = `<strong>${nomeLabel}</strong> — ${fallback}`;
+      }
+    } else {
+      texto = `<strong>${nomeLabel}</strong> — ${fallback}`;
+    }
+
+    // Nota sobre sintomas de hoje
+    if (d?.sintomas?.length) {
+      texto += ` <span style="color:var(--text-muted);font-size:.8rem">· ${escHtml(d.sintomas[0])} hoje</span>`;
+    }
+
+    insightEl.innerHTML = texto;
   }
 };
 
@@ -5184,45 +5331,28 @@ function clearCache() {
 
 /* ─── Init ─── */
 function init() {
-  STORAGE.load();
-  DARKMODE.init();
-  GCAL.init();
-  initDate();
+  try { STORAGE.load(); } catch(e) { console.error('STORAGE.load:', e); }
+  try { DARKMODE.init(); GCAL.init(); initDate(); } catch(e) { console.error('init base:', e); }
 
-  // Aplicar tema salvo
-  if (ST.data.config?.tema && ST.data.config.tema !== 'azul') applyTheme(ST.data.config.tema);
+  try {
+    if (ST.data.config?.tema && ST.data.config.tema !== 'azul') applyTheme(ST.data.config.tema);
+    const nome = ST.data.config?.nome || 'Lari';
+    const nameEl = document.querySelector('.user-name'); if (nameEl) nameEl.textContent = `Olá, ${nome}`;
+    const av = document.querySelector('.avatar'); if (av) av.textContent = ST.data.config?.icone || '🌸';
+  } catch(e) { console.error('init config:', e); }
 
-  // Atualizar nome na sidebar
-  const nome = ST.data.config?.nome || 'Lari';
-  const nameEl = document.querySelector('.user-name'); if (nameEl) nameEl.textContent = `Olá, ${nome}`;
-  const av = document.querySelector('.avatar'); if (av) av.textContent = ST.data.config?.icone || '🌸';
+  try { HOME.render(); TAREFAS.render(); HABITOS.render(); updateNavBadgeTarefas(); } catch(e) { console.error('init home:', e); }
+  try { BEMESTAR.carregar(); CORPO.carregar(); } catch(e) { console.error('init bemestar:', e); }
+  try { PRATICO.renderListas(); PRATICO.renderLembretes(); } catch(e) { console.error('init pratico:', e); }
+  try { CICLOPROD.render(); CICLOPROD.checkNotificacoes(); NOTIF.agendarLembretesHoje(); } catch(e) { console.error('init cicloprod:', e); }
+  try { VINCULOS.render(); OBJETIVOS.render(); } catch(e) { console.error('init vinculos:', e); }
+  try { CHECKIN.carregar(); CICLO.render(); AGENDA.render(); buildHumorCalendar(); } catch(e) { console.error('init ciclo:', e); }
+  try { GFIT.init(); GDRIVE.init(); CONFIG.init(); PADROES.renderInsights(); } catch(e) { console.error('init integrações:', e); }
 
-  // Render dinâmico
-  HOME.render();
-  TAREFAS.render();
-  HABITOS.render();
-  updateNavBadgeTarefas();
-  BEMESTAR.carregar();
-  CORPO.carregar();
-  PRATICO.renderListas();
-  PRATICO.renderLembretes();
-  CICLOPROD.render();
-  CICLOPROD.checkNotificacoes();
-  NOTIF.agendarLembretesHoje();
-  VINCULOS.render();
-  OBJETIVOS.render();
-  CHECKIN.carregar();
-  CICLO.render();
-  AGENDA.render();
-  buildHumorCalendar();
-  GFIT.init();
-  GDRIVE.init();
-  CONFIG.init();
-  PADROES.renderInsights();
-  // Renovação silenciosa de tokens — escalonada; só renova se o token expirou ou está prestes a expirar
   setTimeout(() => { if (GCAL.TOKEN && !GCAL._isValid()) GCAL.silentRefresh(); }, 2000);
   setTimeout(() => { if (GFIT.TOKEN && !GFIT._isValid()) GFIT.silentRefresh(); }, 3000);
   setTimeout(() => { if (GDRIVE.TOKEN && !GDRIVE._isValid()) GDRIVE.silentRefresh(); }, 4000);
+
   const lastPage = localStorage.getItem('ela-page');
   if (lastPage && PAGES.includes(lastPage) && lastPage !== 'home') nav(lastPage);
   if ('serviceWorker' in navigator) {
