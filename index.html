@@ -2465,7 +2465,7 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
 <div class="modal-overlay" id="modal-habito" onclick="closeModal(event,this)">
   <div class="modal">
     <div class="modal-header">
-      <span class="modal-title">Novo Hábito</span>
+      <span class="modal-title" id="modal-habito-titulo">Novo Hábito</span>
       <span class="modal-close" onclick="closeModal(null,'modal-habito')">✕</span>
     </div>
     <div class="modal-body">
@@ -2508,10 +2508,11 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
           <button type="button" class="ep-chip selected" data-dia="6" onclick="this.classList.toggle('selected')">Sáb</button>
         </div>
       </div>
+      <input type="hidden" id="m-habito-editando-id" value="">
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal(null,'modal-habito')">Cancelar</button>
-      <button class="btn btn-primary" onclick="HABITOS.criar()">Criar hábito</button>
+      <button class="btn btn-primary" onclick="HABITOS.criar()"><span id="modal-habito-btn-texto">Criar hábito</span></button>
     </div>
   </div>
 </div>
@@ -3551,13 +3552,17 @@ function openModal(id) {
 function closeModal(event, idOrEl) {
   if (event && event.target !== event.currentTarget) return;
   const el = typeof idOrEl === 'string' ? document.getElementById(idOrEl) : idOrEl;
+  if (el?.id === 'modal-habito') HABITOS._resetModal();
   el?.classList.remove('open');
   document.body.style.overflow = '';
 }
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   const aberto = document.querySelector('.modal-overlay.open');
-  if (aberto) { aberto.classList.remove('open'); document.body.style.overflow = ''; }
+  if (aberto) {
+    if (aberto.id === 'modal-habito') HABITOS._resetModal();
+    aberto.classList.remove('open'); document.body.style.overflow = '';
+  }
 });
 function selectEmoji(pickerId, hiddenId, emoji, el) {
   document.querySelectorAll('#'+pickerId+' .ep-chip').forEach(c=>c.classList.remove('selected'));
@@ -4351,15 +4356,35 @@ const TAREFAS = {
 /* ─── HABITOS ─── */
 const HABITOS = {
   criar() {
+    const editandoId = parseInt(document.getElementById('m-habito-editando-id')?.value)||0;
     const nome  = document.getElementById('m-habito-nome')?.value.trim(); if(!nome) return;
     const icone = document.getElementById('m-habito-icone')?.value.trim()||'⭐';
     const dias  = [...document.querySelectorAll('#habito-dias-row .ep-chip.selected')].map(c=>parseInt(c.dataset.dia));
-    ST.data.habitos=ST.data.habitos||[];
-    ST.data.habitos.push({ id:Date.now(), nome, icone, dias:dias.length?dias:[0,1,2,3,4,5,6], registros:{} });
+    if(editandoId) {
+      const h = ST.data.habitos?.find(h=>h.id===editandoId);
+      if(h){ h.nome=nome; h.icone=icone; h.dias=dias.length?dias:[0,1,2,3,4,5,6]; }
+    } else {
+      ST.data.habitos=ST.data.habitos||[];
+      ST.data.habitos.push({ id:Date.now(), nome, icone, dias:dias.length?dias:[0,1,2,3,4,5,6], registros:{} });
+    }
     STORAGE.save(); closeModal(null,'modal-habito');
-    document.getElementById('m-habito-nome').value=''; document.getElementById('m-habito-icone').value='💧';
-    document.querySelectorAll('#habito-ep .ep-chip').forEach((c,i)=>c.classList.toggle('selected',i===0));
     this.render(); HOME.renderHabitos();
+  },
+  abrirEdicao(id) {
+    const h = ST.data.habitos?.find(h=>h.id===id); if(!h) return;
+    openModal('modal-habito');
+    document.getElementById('m-habito-editando-id').value = id;
+    document.getElementById('m-habito-nome').value = h.nome;
+    document.getElementById('m-habito-icone').value = h.icone;
+    document.querySelectorAll('#habito-ep .ep-chip').forEach(c=>c.classList.toggle('selected', c.textContent.trim()===h.icone));
+    document.querySelectorAll('#habito-dias-row .ep-chip').forEach(c=>c.classList.toggle('selected',(h.dias||[0,1,2,3,4,5,6]).includes(parseInt(c.dataset.dia))));
+    document.getElementById('modal-habito-titulo').textContent='Editar Hábito';
+    document.getElementById('modal-habito-btn-texto').textContent='Salvar alterações';
+  },
+  _resetModal() {
+    document.getElementById('m-habito-editando-id').value='';
+    document.getElementById('modal-habito-titulo').textContent='Novo Hábito';
+    document.getElementById('modal-habito-btn-texto').textContent='Criar hábito';
   },
   toggle(id) {
     const h=ST.data.habitos?.find(h=>h.id===id); if(!h) return;
@@ -4390,7 +4415,10 @@ const HABITOS = {
         <span class="hc-icon">${h.icone}</span><span class="hc-name">${escHtml(h.nome)}</span>
         <div class="week-tracker">${wk.map((d,i)=>{const dt=new Date(ST.hoje+'T12:00:00');dt.setDate(dt.getDate()-6+i);const lbl=dt.toLocaleDateString('pt-BR',{weekday:'short',day:'numeric'});return `<div class="wt-day${d?' done':''}" title="${lbl}${d?' ✓':''}"></div>`;}).join('')}</div>
         ${streak>1?`<span class="hc-streak">${streak} dias 🔥</span>`:feito?'<span class="hc-streak">Feito hoje ✓</span>':''}
-        <span class="tr-del" onclick="HABITOS.excluir(${h.id})" style="font-size:.75rem;margin-top:4px">🗑️</span>
+        <div style="display:flex;gap:6px;margin-top:4px;justify-content:center">
+          <span class="tr-del" onclick="HABITOS.abrirEdicao(${h.id})" style="font-size:.75rem" title="Editar">✏️</span>
+          <span class="tr-del" onclick="HABITOS.excluir(${h.id})" style="font-size:.75rem" title="Excluir">🗑️</span>
+        </div>
       </div>`;
     }).join('');
   }
