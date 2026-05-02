@@ -876,6 +876,8 @@ select.input { cursor: pointer; }
   transition: opacity var(--transition);
 }
 .tarefa-row:hover .tr-del { opacity: 1; }
+.secao-atrasadas { font-size:.72rem; font-weight:600; color:var(--danger); text-transform:uppercase; letter-spacing:.06em; padding:8px 0 4px; }
+.secao-hoje { font-size:.72rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; padding:8px 0 4px; }
 
 /* Hábitos */
 .habitos-grid {
@@ -897,6 +899,8 @@ select.input { cursor: pointer; }
   position: relative;
 }
 .habito-card:hover { border-color: var(--primary); }
+.habito-card.off-day { opacity:.45; }
+.habito-card.off-day:hover { opacity:.7; border-color:var(--border); }
 .habito-card.done {
   background: var(--success-lt);
   border-color: var(--success);
@@ -1209,6 +1213,8 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
 .item-data-badge.past   { background:var(--danger-lt); color:var(--danger); }
 .item-data-badge.today  { background:#FEF3C7; color:#D97706; }
 .item-data-badge.future { background:var(--bg-card2); color:var(--text-muted); }
+.lista-item .li-del { opacity:0; cursor:pointer; font-size:.75rem; color:var(--text-muted); transition:opacity var(--transition); flex-shrink:0; margin-left:4px; }
+.lista-item:hover .li-del { opacity:1; }
 .lista-add-row {
   display: flex;
   gap: 8px;
@@ -2613,6 +2619,38 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
   </div>
 </div>
 
+<!-- Modal: Editar Tarefa -->
+<div class="modal-overlay" id="modal-tarefa-edit" onclick="closeModal(event,this)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Editar Tarefa</span>
+      <span class="modal-close" onclick="closeModal(null,'modal-tarefa-edit')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label class="required">Tarefa</label><input class="input" id="m-tedit-texto" onkeydown="if(event.key==='Enter')TAREFAS.salvarEdicao()"></div>
+      <div class="field"><label>Data</label><input class="input" id="m-tedit-data" type="date"></div>
+      <div class="field">
+        <label>Categoria</label>
+        <select class="input" id="m-tedit-cat">
+          <option value="">Sem categoria</option>
+          <option value="trabalho">💼 Trabalho</option>
+          <option value="casa">🏠 Casa</option>
+          <option value="saude">💚 Saúde</option>
+          <option value="pessoal">👤 Pessoal</option>
+          <option value="financeiro">💰 Financeiro</option>
+          <option value="social">🤝 Social</option>
+          <option value="carro">🚗 Carro</option>
+        </select>
+      </div>
+      <input type="hidden" id="m-tedit-id" value="">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal(null,'modal-tarefa-edit')">Cancelar</button>
+      <button class="btn btn-primary" onclick="TAREFAS.salvarEdicao()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Produto (criar / editar) -->
 <div class="modal-overlay" id="modal-produto" onclick="closeModal(event,this)">
   <div class="modal">
@@ -3653,10 +3691,11 @@ function updateNavBadgeTarefas() {
   if (!el) return;
   const hojeDia = new Date().getDay();
   const pendentes = (ST.data.tarefas || []).filter(t => t.data === ST.hoje && !t.concluida).length;
+  const atrasadas = (ST.data.tarefas || []).filter(t => t.data < ST.hoje && !t.concluida).length;
   const habitosPendentes = (ST.data.habitos || []).filter(h =>
     (!h.dias || h.dias.includes(hojeDia)) && !h.registros?.[ST.hoje]
   ).length;
-  const total = pendentes + habitosPendentes;
+  const total = pendentes + atrasadas + habitosPendentes;
   el.textContent = total;
   el.style.display = total ? '' : 'none';
 }
@@ -4365,17 +4404,41 @@ const TAREFAS = {
     t.concluida=!t.concluida; STORAGE.save(); this.render(); HOME.renderTarefas(); updateNavBadgeTarefas();
   },
   excluir(id) { confirmarExcluir(() => { ST.data.tarefas=(ST.data.tarefas||[]).filter(t=>t.id!==id); STORAGE.save(); this.render(); HOME.renderTarefas(); updateNavBadgeTarefas(); }); },
+  abrirEdicao(id) {
+    const t=ST.data.tarefas?.find(t=>t.id===id); if(!t) return;
+    openModal('modal-tarefa-edit');
+    document.getElementById('m-tedit-id').value=id;
+    document.getElementById('m-tedit-texto').value=t.texto;
+    document.getElementById('m-tedit-data').value=t.data||'';
+    document.getElementById('m-tedit-cat').value=t.categoria||'';
+  },
+  salvarEdicao() {
+    const id=parseInt(document.getElementById('m-tedit-id')?.value);
+    const texto=document.getElementById('m-tedit-texto')?.value.trim();
+    if(!id||!texto) return;
+    const t=ST.data.tarefas?.find(t=>t.id===id); if(!t) return;
+    t.texto=texto;
+    t.data=document.getElementById('m-tedit-data')?.value||t.data;
+    t.categoria=document.getElementById('m-tedit-cat')?.value||'';
+    STORAGE.save(); closeModal(null,'modal-tarefa-edit'); this.render(); HOME.renderTarefas(); updateNavBadgeTarefas();
+  },
   render() {
-    const lista = document.getElementById('tarefa-list'); if (!lista) return;
-    const hoje  = (ST.data.tarefas||[]).filter(t=>t.data===ST.hoje);
-    if (!hoje.length) { lista.innerHTML='<div class="empty-state">Nenhuma tarefa para hoje.<br><button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="nav(\'tarefas\')">+ Adicionar tarefa</button></div>'; return; }
-    lista.innerHTML = hoje.map(t=>`
-      <div class="tarefa-row">
+    const lista=document.getElementById('tarefa-list'); if(!lista) return;
+    const todas=ST.data.tarefas||[];
+    const hojeT=todas.filter(t=>t.data===ST.hoje);
+    const atrasadas=todas.filter(t=>t.data<ST.hoje&&!t.concluida);
+    if(!hojeT.length&&!atrasadas.length){ lista.innerHTML='<div class="empty-state">Nenhuma tarefa para hoje.<br><button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="nav(\'tarefas\')">+ Adicionar tarefa</button></div>'; return; }
+    const rowFn=t=>`<div class="tarefa-row">
         <div class="tr-check${t.concluida?' done':''}" onclick="TAREFAS.toggleConcluida(${t.id})">${t.concluida?'✓':''}</div>
         <span class="tr-text${t.concluida?' done':''}">${escHtml(t.texto)}</span>
         ${t.categoria?`<span class="badge ${this.CAT_COR[t.categoria]||''}" style="margin-right:4px;font-size:.68rem">${this.CAT[t.categoria]||t.categoria}</span>`:''}
+        <span class="tr-del" onclick="TAREFAS.abrirEdicao(${t.id})" title="Editar">✏️</span>
         <span class="tr-del" onclick="TAREFAS.excluir(${t.id})">🗑️</span>
-      </div>`).join('');
+      </div>`;
+    let html='';
+    if(atrasadas.length) html+=`<div class="secao-atrasadas">⚠️ Atrasadas (${atrasadas.length})</div>`+atrasadas.map(rowFn).join('');
+    if(hojeT.length) html+=(atrasadas.length?'<div class="secao-hoje">Hoje</div>':'')+hojeT.map(rowFn).join('');
+    lista.innerHTML=html;
   }
 };
 
@@ -4431,9 +4494,11 @@ const HABITOS = {
     const grid=document.getElementById('habitos-grid'); if(!grid) return;
     const hs=ST.data.habitos||[];
     if(!hs.length){ grid.innerHTML='<div class="empty-state">Nenhum habito cadastrado ainda.<br><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-habito\')">+ Novo habito</button></div>'; return; }
+    const hojeDia=new Date().getDay();
     grid.innerHTML=hs.map(h=>{
       const feito=!!h.registros?.[ST.hoje]; const streak=this._streak(h); const wk=this._semana(h);
-      return `<div class="habito-card${feito?' done':''}">
+      const ehHoje=!h.dias||h.dias.includes(hojeDia);
+      return `<div class="habito-card${feito?' done':''}${ehHoje?'':' off-day'}">
         <div class="hc-check" onclick="HABITOS.toggle(${h.id})">${feito?'✓':''}</div>
         <span class="hc-icon">${h.icone}</span><span class="hc-name">${escHtml(h.nome)}</span>
         <div class="week-tracker">${wk.map((d,i)=>{const dt=new Date(ST.hoje+'T12:00:00');dt.setDate(dt.getDate()-6+i);const lbl=dt.toLocaleDateString('pt-BR',{weekday:'short',day:'numeric'});return `<div class="wt-day${d?' done':''}" title="${lbl}${d?' ✓':''}"></div>`;}).join('')}</div>
@@ -4653,6 +4718,13 @@ const PRATICO = {
     it.concluido=!it.concluido; STORAGE.save(); this.renderListas();
   },
   excluirLista(id) { confirmarExcluir(() => { ST.data.listas=(ST.data.listas||[]).filter(l=>l.id!==id); STORAGE.save(); this.renderListas(); }); },
+  excluirItem(lid,iid) {
+    confirmarExcluir(() => {
+      const l=ST.data.listas?.find(l=>l.id===lid);
+      if(l) l.itens=(l.itens||[]).filter(i=>i.id!==iid);
+      STORAGE.save(); this.renderListas();
+    });
+  },
   criarLembrete() {
     const texto=document.getElementById('m-lem-texto')?.value.trim(); if(!texto) return;
     const freq=document.getElementById('m-lem-freq')?.value||'Diário';
@@ -4684,6 +4756,7 @@ const PRATICO = {
           return `<div class="lista-item">
             <div class="li-check${it.concluido?' done':''}" onclick="PRATICO.toggleItem(${l.id},${it.id})">${it.concluido?'✓':''}</div>
             <span class="li-text${it.concluido?' done':''}">${escHtml(it.texto)}</span>${badge}
+            <span class="li-del" onclick="PRATICO.excluirItem(${l.id},${it.id})">🗑️</span>
           </div>`;}).join('')}</div>
         <div class="lista-add-row">
           <input class="input" placeholder="Adicionar item..." id="li-${l.id}" onkeydown="if(event.key==='Enter')PRATICO.addItem(${l.id},this)">
