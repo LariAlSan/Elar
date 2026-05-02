@@ -4431,10 +4431,7 @@ const HABITOS = {
     const grid=document.getElementById('habitos-grid'); if(!grid) return;
     const hs=ST.data.habitos||[];
     if(!hs.length){ grid.innerHTML='<div class="empty-state">Nenhum habito cadastrado ainda.<br><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-habito\')">+ Novo habito</button></div>'; return; }
-    const hojeDia=new Date().getDay();
-    const hsHoje=hs.filter(h=>!h.dias||h.dias.includes(hojeDia));
-    if(!hsHoje.length){ grid.innerHTML='<div class="empty-state">Nenhum habito programado para hoje.</div>'; return; }
-    grid.innerHTML=hsHoje.map(h=>{
+    grid.innerHTML=hs.map(h=>{
       const feito=!!h.registros?.[ST.hoje]; const streak=this._streak(h); const wk=this._semana(h);
       return `<div class="habito-card${feito?' done':''}">
         <div class="hc-check" onclick="HABITOS.toggle(${h.id})">${feito?'✓':''}</div>
