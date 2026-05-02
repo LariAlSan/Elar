@@ -1176,8 +1176,11 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 14px;
+  margin-bottom: 0;
+  cursor: pointer;
+  user-select: none;
 }
+.lista-card.expanded .lista-header { margin-bottom: 14px; }
 .lista-header .lh-icon { font-size: 1.2rem; }
 .lista-header .lh-title { font-size: .92rem; font-weight: 600; flex: 1; }
 .lista-header .lh-count {
@@ -1187,7 +1190,12 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
   padding: 2px 8px;
   border-radius: 99px;
 }
-.lista-items { display: flex; flex-direction: column; gap: 4px; }
+.lista-header .lh-toggle { font-size:.65rem; color:var(--text-muted); transition:transform var(--transition); flex-shrink:0; }
+.lista-card.expanded .lh-toggle { transform:rotate(90deg); }
+.lista-card .lista-items { display: none; }
+.lista-card .lista-add-row { display: none; }
+.lista-card.expanded .lista-items { display: flex; flex-direction: column; gap: 4px; }
+.lista-card.expanded .lista-add-row { display: flex; }
 .lista-item {
   display: flex;
   align-items: center;
@@ -4733,16 +4741,22 @@ const PRATICO = {
     STORAGE.save(); closeModal(null,'modal-lembrete'); document.getElementById('m-lem-texto').value=''; this.renderLembretes();
   },
   excluirLembrete(id) { confirmarExcluir(() => { ST.data.lembretes=(ST.data.lembretes||[]).filter(l=>l.id!==id); STORAGE.save(); this.renderLembretes(); }); },
+  toggleLista(lid) {
+    const card=document.querySelector(`.lista-card[data-lid="${lid}"]`);
+    card?.classList.toggle('expanded');
+  },
   renderListas() {
     const cont=document.getElementById('listas-container'); if(!cont) return;
+    const expandidos=new Set([...cont.querySelectorAll('.lista-card.expanded')].map(c=>parseInt(c.dataset.lid)));
     const ls=ST.data.listas||[];
     if(!ls.length){ cont.innerHTML='<div class="empty-state">Nenhuma lista ainda.<br><button class="btn btn-primary btn-sm" style="margin-top:6px" onclick="PRATICO.abrirModalLista()">+ Nova lista</button></div>'; return; }
     cont.innerHTML=ls.map(l=>`
-      <div class="lista-card">
-        <div class="lista-header">
+      <div class="lista-card" data-lid="${l.id}">
+        <div class="lista-header" onclick="PRATICO.toggleLista(${l.id})">
+          <span class="lh-toggle">▶</span>
           <span class="lh-icon">${l.icone}</span><span class="lh-title">${escHtml(l.nome)}</span>
           <span class="lh-count">${(l.itens||[]).length} iten${(l.itens||[]).length!==1?'s':''}</span>
-          <span class="tr-del" onclick="PRATICO.excluirLista(${l.id})" style="margin-left:auto">🗑️</span>
+          <span class="tr-del" onclick="event.stopPropagation();PRATICO.excluirLista(${l.id})">🗑️</span>
         </div>
         <div class="lista-items">${(l.itens||[]).map(it=>{
           const hoje2=ST.hoje;
@@ -4763,6 +4777,10 @@ const PRATICO = {
           <button class="btn btn-ghost btn-sm" onclick="PRATICO.abrirModalItem(${l.id})" title="Adicionar com data/hora">+</button>
         </div>
       </div>`).join('');
+    expandidos.forEach(lid=>{
+      const card=cont.querySelector(`[data-lid="${lid}"]`);
+      if(card) card.classList.add('expanded');
+    });
   },
   renderLembretes() {
     const cont=document.getElementById('lembretes-lista'); if(!cont) return;
