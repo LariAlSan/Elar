@@ -1205,6 +1205,10 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
 .lista-item .li-check.done { background: var(--success); border-color: var(--success); color: #fff; }
 .lista-item .li-text { flex: 1; font-size: .85rem; }
 .lista-item .li-text.done { text-decoration: line-through; color: var(--text-muted); }
+.item-data-badge { font-size:.65rem; padding:1px 7px; border-radius:20px; white-space:nowrap; margin-left:6px; flex-shrink:0; }
+.item-data-badge.past   { background:var(--danger-lt); color:var(--danger); }
+.item-data-badge.today  { background:#FEF3C7; color:#D97706; }
+.item-data-badge.future { background:var(--bg-card2); color:var(--text-muted); }
 .lista-add-row {
   display: flex;
   gap: 8px;
@@ -2556,6 +2560,28 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal(null,'modal-lista')">Cancelar</button>
       <button class="btn btn-primary" onclick="PRATICO.criarLista()">Criar lista</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Adicionar Item de Lista -->
+<div class="modal-overlay" id="modal-item-lista" onclick="closeModal(event,this)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Adicionar item</span>
+      <span class="modal-close" onclick="closeModal(null,'modal-item-lista')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label class="required">Item</label><input class="input" id="m-item-texto" placeholder="Ex: Comprar remédio, Ligar para fulano..." onkeydown="if(event.key==='Enter')PRATICO.addItemModal()"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>Data</label><input class="input" id="m-item-data" type="date"></div>
+        <div class="field"><label>Hora</label><input class="input" id="m-item-hora" type="time"></div>
+      </div>
+      <input type="hidden" id="m-item-lid" value="">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal(null,'modal-item-lista')">Cancelar</button>
+      <button class="btn btn-primary" onclick="PRATICO.addItemModal()">Adicionar</button>
     </div>
   </div>
 </div>
@@ -4587,6 +4613,44 @@ const PRATICO = {
     (l.itens=l.itens||[]).push({ id:Date.now(), texto, concluido:false });
     STORAGE.save(); inp.value=''; this.renderListas();
   },
+  abrirModalItem(lid) {
+    openModal('modal-item-lista');
+    document.getElementById('m-item-lid').value=lid;
+  },
+  addItemModal() {
+    const lid=parseInt(document.getElementById('m-item-lid')?.value);
+    const texto=document.getElementById('m-item-texto')?.value.trim();
+    if(!lid||!texto) return;
+    const data=document.getElementById('m-item-data')?.value||'';
+    const hora=document.getElementById('m-item-hora')?.value||'';
+    const l=ST.data.listas?.find(l=>l.id===lid); if(!l) return;
+    const item={id:Date.now(),texto,concluido:false};
+    if(data) item.data=data; if(hora) item.hora=hora;
+    (l.itens=l.itens||[]).push(item);
+    STORAGE.save(); closeModal(null,'modal-item-lista'); this.renderListas();
+  },
+  checkNotificacoes() {
+    const hoje=ST.hoje; let vencidos=0;
+    (ST.data.listas||[]).forEach(l=>(l.itens||[]).forEach(it=>{ if(!it.concluido&&it.data&&it.data<hoje) vencidos++; }));
+    if(vencidos>0) showToast(`${vencidos} item${vencidos>1?'s':''} de lista com prazo vencido`,'aviso');
+  },
+  agendarItensHoje() {
+    if(NOTIF.permissao()!=='granted') return;
+    const hoje=ST.hoje; const agora=new Date();
+    const chave=`ela-item-notif-${hoje}`;
+    const jaDisp=JSON.parse(localStorage.getItem(chave)||'[]');
+    (ST.data.listas||[]).forEach(l=>(l.itens||[]).filter(it=>it.data===hoje&&it.hora&&!it.concluido&&!jaDisp.includes(it.id)).forEach(it=>{
+      const [hh,mm]=it.hora.split(':').map(Number);
+      const alvo=new Date(agora); alvo.setHours(hh,mm,0,0);
+      const delay=alvo-agora;
+      if(delay<0||delay>23*60*60*1000) return;
+      setTimeout(()=>{
+        NOTIF.mostrar(`📋 ${it.texto}`,escHtml(l.nome),`ela-item-${it.id}`);
+        const j=JSON.parse(localStorage.getItem(chave)||'[]'); j.push(it.id);
+        localStorage.setItem(chave,JSON.stringify(j));
+      },delay);
+    }));
+  },
   toggleItem(lid,iid) {
     const it=ST.data.listas?.find(l=>l.id===lid)?.itens?.find(i=>i.id===iid); if(!it) return;
     it.concluido=!it.concluido; STORAGE.save(); this.renderListas();
@@ -4611,14 +4675,22 @@ const PRATICO = {
           <span class="lh-count">${(l.itens||[]).length} iten${(l.itens||[]).length!==1?'s':''}</span>
           <span class="tr-del" onclick="PRATICO.excluirLista(${l.id})" style="margin-left:auto">🗑️</span>
         </div>
-        <div class="lista-items">${(l.itens||[]).map(it=>`
-          <div class="lista-item">
+        <div class="lista-items">${(l.itens||[]).map(it=>{
+          const hoje2=ST.hoje;
+          let badge='';
+          if(it.data&&!it.concluido){
+            const d=new Date(it.data+'T12:00:00');
+            const lbl=d.toLocaleDateString('pt-BR',{day:'numeric',month:'short'})+(it.hora?' · '+it.hora:'');
+            const cls=it.data<hoje2?'past':it.data===hoje2?'today':'future';
+            badge=`<span class="item-data-badge ${cls}">${lbl}</span>`;
+          }
+          return `<div class="lista-item">
             <div class="li-check${it.concluido?' done':''}" onclick="PRATICO.toggleItem(${l.id},${it.id})">${it.concluido?'✓':''}</div>
-            <span class="li-text${it.concluido?' done':''}">${escHtml(it.texto)}</span>
-          </div>`).join('')}</div>
+            <span class="li-text${it.concluido?' done':''}">${escHtml(it.texto)}</span>${badge}
+          </div>`;}).join('')}</div>
         <div class="lista-add-row">
           <input class="input" placeholder="Adicionar item..." id="li-${l.id}" onkeydown="if(event.key==='Enter')PRATICO.addItem(${l.id},this)">
-          <button class="btn btn-ghost btn-sm" onclick="PRATICO.addItem(${l.id},document.getElementById('li-${l.id}'))">+</button>
+          <button class="btn btn-ghost btn-sm" onclick="PRATICO.abrirModalItem(${l.id})" title="Adicionar com data/hora">+</button>
         </div>
       </div>`).join('');
   },
@@ -5377,7 +5449,7 @@ function init() {
 
   try { HOME.render(); TAREFAS.render(); HABITOS.render(); updateNavBadgeTarefas(); } catch(e) { console.error('init home:', e); }
   try { BEMESTAR.carregar(); CORPO.carregar(); } catch(e) { console.error('init bemestar:', e); }
-  try { PRATICO.renderListas(); PRATICO.renderLembretes(); } catch(e) { console.error('init pratico:', e); }
+  try { PRATICO.renderListas(); PRATICO.renderLembretes(); PRATICO.checkNotificacoes(); PRATICO.agendarItensHoje(); } catch(e) { console.error('init pratico:', e); }
   try { CICLOPROD.render(); CICLOPROD.checkNotificacoes(); NOTIF.agendarLembretesHoje(); } catch(e) { console.error('init cicloprod:', e); }
   try { VINCULOS.render(); OBJETIVOS.render(); } catch(e) { console.error('init vinculos:', e); }
   try { CHECKIN.carregar(); CICLO.render(); AGENDA.render(); buildHumorCalendar(); } catch(e) { console.error('init ciclo:', e); }
