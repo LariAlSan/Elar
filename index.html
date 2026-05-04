@@ -1284,6 +1284,18 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
 .prod-status-runout  { background: #FFEDD5; color: #D4660A; }
 .prod-status-expired { background: var(--danger-lt); color: var(--danger); }
 .prod-actions { display: flex; gap: 6px; align-items: center; }
+.prod-status-semestoque { background: var(--danger-lt); color: var(--danger); }
+.prod-status-baixo { background: #FFF3E0; color: #E65100; }
+.prod-estoque-badge { font-size: .72rem; font-weight: 600; padding: 3px 9px; border-radius: 20px; background: var(--bg-card2); color: var(--text-2); white-space: nowrap; }
+.prod-estoque-baixo { background: #FFF3E0; color: #E65100; }
+.prod-estoque-zero { background: var(--danger-lt); color: var(--danger); }
+.prod-quick-btns { display: flex; gap: 4px; align-items: center; }
+.prod-quick-btn { font-size: .72rem; font-weight: 600; padding: 4px 9px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-2); cursor: pointer; white-space: nowrap; }
+.prod-quick-btn:hover { background: var(--bg-card2); }
+.cicloprod-filtros { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 4px; scrollbar-width: none; }
+.cicloprod-filtros::-webkit-scrollbar { display: none; }
+.cicloprod-filtro-chip { font-size: .75rem; font-weight: 500; padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-2); cursor: pointer; white-space: nowrap; }
+.cicloprod-filtro-chip.ativo { background: var(--primary); color: #fff; border-color: var(--primary); }
 
 /* ═══════════════════════════════════════════════
    PAGE: VÍNCULOS (RELACIONAMENTOS)
@@ -2256,9 +2268,10 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
         <div class="lista-card">
           <div class="lista-header">
             <span class="lh-icon">🧴</span>
-            <span class="lh-title">Ciclo de Produtos</span>
+            <span class="lh-title">Inventário de Produtos</span>
             <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="CICLOPROD.abrirModal()">+</button>
           </div>
+          <div id="cicloprod-filtros" class="cicloprod-filtros"></div>
           <div id="cicloprod-lista"></div>
         </div>
       </div>
@@ -2672,25 +2685,46 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
       <div class="field">
         <label class="required">Categoria</label>
         <select class="input" id="m-prod-categoria">
-          <option value="Beleza">Beleza</option>
-          <option value="Saúde">Saúde</option>
+          <option value="Cabelo">Cabelo</option>
+          <option value="Skincare">Skincare</option>
+          <option value="Unhas">Unhas</option>
+          <option value="Corpo">Corpo</option>
+          <option value="Maquiagem">Maquiagem</option>
+          <option value="Perfume">Perfume</option>
+          <option value="Suplementos">Suplementos</option>
           <option value="Medicamento">Medicamento</option>
           <option value="Higiene">Higiene</option>
           <option value="Alimentação">Alimentação</option>
-          <option value="Limpeza">Limpeza</option>
           <option value="Outro">Outro</option>
         </select>
       </div>
-      <div class="field"><label>Data de validade <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-validade" type="date"></div>
-      <div class="field"><label>Notificar com <b id="m-prod-days-label">7</b> dias de antecedência</label>
-        <input class="input" id="m-prod-notify" type="range" min="1" max="30" value="7" oninput="document.getElementById('m-prod-days-label').textContent=this.value">
-        <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--text-muted);margin-top:2px"><span>1 dia</span><span>30 dias</span></div>
-      </div>
+      <div class="field"><label>Marca <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-marca" placeholder="Ex: Neutrogena, Himalaya..."></div>
+      <details class="field-group-optional" id="m-prod-estoque-details">
+        <summary>Estoque</summary>
+        <div class="field">
+          <label>Quantidade em estoque <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="input" id="m-prod-qtd" type="number" min="0" placeholder="Ex: 2" style="flex:1">
+            <select class="input" id="m-prod-unidade" style="flex:1">
+              <option value="unidade">unidade(s)</option>
+              <option value="ml">ml</option>
+              <option value="g">g</option>
+              <option value="kg">kg</option>
+              <option value="L">L</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>Quantidade mínima para alerta <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-qtdmin" type="number" min="0" placeholder="Ex: 1"></div>
+      </details>
       <details class="field-group-optional">
-        <summary>Mais detalhes</summary>
-        <div class="field"><label>Marca <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-marca" placeholder="Ex: Neutrogena, Himalaya..."></div>
-        <div class="field"><label>Data de abertura <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-abertura" type="date"></div>
-        <div class="field"><label>Duração estimada em dias <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-duracao" type="number" min="1" placeholder="Ex: 30"></div>
+        <summary>Validade e duração</summary>
+        <div class="field"><label>Data de validade</label><input class="input" id="m-prod-validade" type="date"></div>
+        <div class="field"><label>Data de abertura</label><input class="input" id="m-prod-abertura" type="date"></div>
+        <div class="field"><label>Duração estimada em dias</label><input class="input" id="m-prod-duracao" type="number" min="1" placeholder="Ex: 30"></div>
+        <div class="field"><label>Notificar com <b id="m-prod-days-label">7</b> dias de antecedência</label>
+          <input class="input" id="m-prod-notify" type="range" min="1" max="30" value="7" oninput="document.getElementById('m-prod-days-label').textContent=this.value">
+          <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--text-muted);margin-top:2px"><span>1 dia</span><span>30 dias</span></div>
+        </div>
         <div class="field">
           <label>Importância</label>
           <select class="input" id="m-prod-importancia">
@@ -2704,6 +2738,35 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal(null,'modal-produto')">Cancelar</button>
       <button class="btn btn-primary" onclick="CICLOPROD.salvar()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Histórico de Produto -->
+<div class="modal-overlay" id="modal-historico-produto" onclick="closeModal(event,this)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-hist-titulo">Histórico</span>
+      <span class="modal-close" onclick="closeModal(null,'modal-historico-produto')">✕</span>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="m-hist-prod-id">
+      <div id="modal-hist-lista" style="max-height:220px;overflow-y:auto;margin-bottom:16px"></div>
+      <div style="border-top:1px solid var(--border);padding-top:12px">
+        <div style="font-size:.78rem;font-weight:600;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Adicionar entrada</div>
+        <div class="field" style="margin-bottom:8px">
+          <select class="input" id="m-hist-tipo">
+            <option value="uso">Uso (consumo)</option>
+            <option value="compra">Compra (entrada)</option>
+            <option value="ajuste">Ajuste manual</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <input class="input" id="m-hist-qtd" type="number" min="1" placeholder="Qtd" style="width:80px">
+          <input class="input" id="m-hist-obs" placeholder="Obs (opcional)" style="flex:1">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="CICLOPROD.salvarMovimento()" style="width:100%">Registrar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -4797,6 +4860,8 @@ const PRATICO = {
 
 /* ─── CICLOPROD ─── */
 const CICLOPROD = {
+  _filtroCategoria: 'Todos',
+
   _calcRef(p) {
     let validadeRef = null, duracaoRef = null;
     if (p.dataValidade) validadeRef = new Date(p.dataValidade + 'T12:00:00');
@@ -4811,6 +4876,10 @@ const CICLOPROD = {
   },
 
   calcularStatus(p) {
+    if (p.qtdEstoque !== null && p.qtdEstoque !== undefined) {
+      if (p.qtdEstoque === 0) return 'sem_estoque';
+      if (p.qtdMinima && p.qtdEstoque <= p.qtdMinima) return 'estoque_baixo';
+    }
     const r = this._calcRef(p); if (!r) return 'ok';
     const hoje = new Date(ST.hoje + 'T12:00:00');
     const diff = Math.ceil((r.ref - hoje) / 86400000);
@@ -4831,11 +4900,11 @@ const CICLOPROD = {
   },
 
   _statusLabel(st) {
-    return { ok:'Em dia', expiring:'Vencendo', expired:'Vencido', running_out:'Acabando' }[st] || 'Em dia';
+    return { ok:'Em dia', expiring:'Vencendo', expired:'Vencido', running_out:'Acabando', sem_estoque:'Sem estoque', estoque_baixo:'Estoque baixo' }[st] || 'Em dia';
   },
 
   _statusClass(st) {
-    return { ok:'prod-status-ok', expiring:'prod-status-expiring', expired:'prod-status-expired', running_out:'prod-status-runout' }[st] || 'prod-status-ok';
+    return { ok:'prod-status-ok', expiring:'prod-status-expiring', expired:'prod-status-expired', running_out:'prod-status-runout', sem_estoque:'prod-status-semestoque', estoque_baixo:'prod-status-baixo' }[st] || 'prod-status-ok';
   },
 
   _tempoTexto(p) {
@@ -4848,22 +4917,56 @@ const CICLOPROD = {
     return `${dias} dia${dias!==1?'s':''} restante${dias!==1?'s':''}`;
   },
 
-  render() {
-    const cont = document.getElementById('cicloprod-lista'); if (!cont) return;
+  _estoqueTexto(p) {
+    if (p.qtdEstoque === null || p.qtdEstoque === undefined) return null;
+    const u = p.unidade || 'unidade';
+    const plural = p.qtdEstoque !== 1 && u === 'unidade' ? 's' : '';
+    return `${p.qtdEstoque} ${u}${plural}`;
+  },
+
+  _estoqueCls(p) {
+    if (p.qtdEstoque === 0) return 'prod-estoque-zero';
+    if (p.qtdMinima && p.qtdEstoque <= p.qtdMinima) return 'prod-estoque-baixo';
+    return '';
+  },
+
+  renderFiltros() {
+    const cont = document.getElementById('cicloprod-filtros'); if (!cont) return;
     const ps = ST.data.produtosCiclo || [];
+    const cats = ['Todos', ...new Set(ps.map(p => p.categoria).filter(Boolean))];
+    cont.innerHTML = cats.map(c =>
+      `<button class="cicloprod-filtro-chip${this._filtroCategoria === c ? ' ativo' : ''}" onclick="CICLOPROD.setFiltro('${c.replace(/'/g,"\\'")}')">${escHtml(c)}</button>`
+    ).join('');
+  },
+
+  setFiltro(cat) {
+    this._filtroCategoria = cat;
+    this.renderFiltros();
+    this._renderLista();
+  },
+
+  render() {
+    this.renderFiltros();
+    this._renderLista();
+  },
+
+  _renderLista() {
+    const cont = document.getElementById('cicloprod-lista'); if (!cont) return;
+    let ps = ST.data.produtosCiclo || [];
+    if (this._filtroCategoria !== 'Todos') ps = ps.filter(p => p.categoria === this._filtroCategoria);
     if (!ps.length) {
-      cont.innerHTML = '<div class="empty-state">Nenhum produto ainda.<br><button class="btn btn-primary btn-sm" onclick="CICLOPROD.abrirModal()">+ Adicionar produto</button></div>';
+      cont.innerHTML = `<div class="empty-state">Nenhum produto${this._filtroCategoria !== 'Todos' ? ' nessa categoria' : ' ainda'}.<br><button class="btn btn-primary btn-sm" onclick="CICLOPROD.abrirModal()">+ Adicionar produto</button></div>`;
       return;
     }
-    const sorted = [...ps].sort((a,b) => {
-      const ordem = { expired:0, running_out:1, expiring:2, ok:3 };
-      return (ordem[this.calcularStatus(a)]||3) - (ordem[this.calcularStatus(b)]||3);
-    });
+    const ordemStatus = { sem_estoque:0, expired:1, running_out:2, expiring:3, estoque_baixo:4, ok:5 };
+    const sorted = [...ps].sort((a,b) => (ordemStatus[this.calcularStatus(a)]||5) - (ordemStatus[this.calcularStatus(b)]||5));
     cont.innerHTML = sorted.map(p => {
       const st = this.calcularStatus(p);
       const cls = this._statusClass(st);
       const lbl = this._statusLabel(st);
       const tempo = this._tempoTexto(p);
+      const estoqueTexto = this._estoqueTexto(p);
+      const estoqueCls = this._estoqueCls(p);
       const meta = [p.marca, tempo].filter(Boolean).join(' · ');
       return `<div class="prod-item">
         <div class="prod-item-main">
@@ -4871,8 +4974,14 @@ const CICLOPROD = {
           ${meta ? `<div class="prod-item-meta">${escHtml(meta)}</div>` : ''}
         </div>
         <span class="prod-cat-tag">${escHtml(p.categoria)}</span>
+        ${estoqueTexto !== null ? `<span class="prod-estoque-badge ${estoqueCls}">${escHtml(estoqueTexto)}</span>` : ''}
         <span class="prod-status-badge ${cls}">${lbl}</span>
+        <div class="prod-quick-btns">
+          <button class="prod-quick-btn" onclick="CICLOPROD.abrirHistorico(${p.id},'uso')">− Usar</button>
+          <button class="prod-quick-btn" onclick="CICLOPROD.abrirHistorico(${p.id},'compra')">+ Comprar</button>
+        </div>
         <div class="prod-actions">
+          <span class="tr-del" onclick="CICLOPROD.abrirHistorico(${p.id})" title="Histórico" style="cursor:pointer;font-size:.9rem">📋</span>
           <span class="tr-del" onclick="CICLOPROD.abrirModal(${p.id})" title="Editar" style="cursor:pointer;font-size:.9rem">✏️</span>
           <span class="tr-del" onclick="CICLOPROD.excluir(${p.id})">🗑️</span>
         </div>
@@ -4881,7 +4990,6 @@ const CICLOPROD = {
   },
 
   abrirModal(id) {
-    const titulo = document.getElementById('modal-produto-titulo');
     const mId = document.getElementById('m-prod-id');
     const mNome = document.getElementById('m-prod-nome');
     const mCat = document.getElementById('m-prod-categoria');
@@ -4892,7 +5000,11 @@ const CICLOPROD = {
     const mNot = document.getElementById('m-prod-notify');
     const mDaysLbl = document.getElementById('m-prod-days-label');
     const mImp = document.getElementById('m-prod-importancia');
-    const details = document.querySelector('#modal-produto .field-group-optional');
+    const mQtd = document.getElementById('m-prod-qtd');
+    const mQtdMin = document.getElementById('m-prod-qtdmin');
+    const mUnidade = document.getElementById('m-prod-unidade');
+    const detailsEst = document.getElementById('m-prod-estoque-details');
+    const titulo = document.getElementById('modal-produto-titulo');
 
     if (id) {
       const p = (ST.data.produtosCiclo||[]).find(x => x.id === id);
@@ -4900,23 +5012,26 @@ const CICLOPROD = {
       if (titulo) titulo.textContent = 'Editar Produto';
       if (mId) mId.value = id;
       if (mNome) mNome.value = p.nome || '';
-      if (mCat) mCat.value = p.categoria || 'Beleza';
+      if (mCat) mCat.value = p.categoria || 'Skincare';
       if (mMarca) mMarca.value = p.marca || '';
       if (mVal) mVal.value = p.dataValidade || '';
       if (mAb) mAb.value = p.dataAbertura || '';
       if (mDur) mDur.value = p.duracaoEstimada || '';
       if (mNot) { mNot.value = p.notifyBeforeDays || 7; if (mDaysLbl) mDaysLbl.textContent = mNot.value; }
       if (mImp) mImp.value = p.importancia || 'media';
-      // Abrir <details> automaticamente se há campos opcionais preenchidos
-      if (details) details.toggleAttribute('open', !!(p.marca || p.dataAbertura || p.duracaoEstimada));
+      if (mQtd) mQtd.value = (p.qtdEstoque !== null && p.qtdEstoque !== undefined) ? p.qtdEstoque : '';
+      if (mQtdMin) mQtdMin.value = p.qtdMinima || '';
+      if (mUnidade) mUnidade.value = p.unidade || 'unidade';
+      if (detailsEst) detailsEst.toggleAttribute('open', p.qtdEstoque !== null && p.qtdEstoque !== undefined);
     } else {
       if (titulo) titulo.textContent = 'Novo Produto';
       if (mId) mId.value = '';
-      [mNome,mMarca,mVal,mAb,mDur].forEach(el => { if(el) el.value=''; });
-      if (mCat) mCat.value = 'Beleza';
+      [mNome, mMarca, mVal, mAb, mDur, mQtd, mQtdMin].forEach(el => { if(el) el.value = ''; });
+      if (mCat) mCat.value = 'Skincare';
       if (mNot) { mNot.value = 7; if (mDaysLbl) mDaysLbl.textContent = '7'; }
       if (mImp) mImp.value = 'media';
-      if (details) details.removeAttribute('open');
+      if (mUnidade) mUnidade.value = 'unidade';
+      if (detailsEst) detailsEst.removeAttribute('open');
     }
     document.getElementById('modal-produto')?.classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -4927,38 +5042,29 @@ const CICLOPROD = {
     if (!nome) { showToast('Nome obrigatório', 'erro'); return; }
     const agora = new Date().toISOString();
     const idVal = document.getElementById('m-prod-id')?.value;
+    const qtdRaw = document.getElementById('m-prod-qtd')?.value;
+    const qtdEstoque = qtdRaw !== '' ? (parseInt(qtdRaw) >= 0 ? parseInt(qtdRaw) : null) : null;
+    const qtdMinRaw = document.getElementById('m-prod-qtdmin')?.value;
     ST.data.produtosCiclo = ST.data.produtosCiclo || [];
-
+    const dados = {
+      nome,
+      categoria: document.getElementById('m-prod-categoria')?.value || 'Skincare',
+      marca: document.getElementById('m-prod-marca')?.value.trim() || '',
+      dataValidade: document.getElementById('m-prod-validade')?.value || '',
+      dataAbertura: document.getElementById('m-prod-abertura')?.value || '',
+      duracaoEstimada: parseInt(document.getElementById('m-prod-duracao')?.value) || null,
+      notifyBeforeDays: parseInt(document.getElementById('m-prod-notify')?.value) || 7,
+      importancia: document.getElementById('m-prod-importancia')?.value || 'media',
+      qtdEstoque,
+      qtdMinima: qtdMinRaw !== '' ? (parseInt(qtdMinRaw) || null) : null,
+      unidade: document.getElementById('m-prod-unidade')?.value || 'unidade',
+      modificadoEm: agora
+    };
     if (idVal) {
       const idx = ST.data.produtosCiclo.findIndex(x => x.id === parseInt(idVal));
-      if (idx !== -1) {
-        ST.data.produtosCiclo[idx] = {
-          ...ST.data.produtosCiclo[idx],
-          nome,
-          categoria: document.getElementById('m-prod-categoria')?.value || 'Beleza',
-          marca: document.getElementById('m-prod-marca')?.value.trim() || '',
-          dataValidade: document.getElementById('m-prod-validade')?.value || '',
-          dataAbertura: document.getElementById('m-prod-abertura')?.value || '',
-          duracaoEstimada: parseInt(document.getElementById('m-prod-duracao')?.value) || null,
-          notifyBeforeDays: parseInt(document.getElementById('m-prod-notify')?.value) || 7,
-          importancia: document.getElementById('m-prod-importancia')?.value || 'media',
-          modificadoEm: agora
-        };
-      }
+      if (idx !== -1) ST.data.produtosCiclo[idx] = { ...ST.data.produtosCiclo[idx], ...dados };
     } else {
-      ST.data.produtosCiclo.push({
-        id: Date.now(),
-        nome,
-        categoria: document.getElementById('m-prod-categoria')?.value || 'Beleza',
-        marca: document.getElementById('m-prod-marca')?.value.trim() || '',
-        dataValidade: document.getElementById('m-prod-validade')?.value || '',
-        dataAbertura: document.getElementById('m-prod-abertura')?.value || '',
-        duracaoEstimada: parseInt(document.getElementById('m-prod-duracao')?.value) || null,
-        notifyBeforeDays: parseInt(document.getElementById('m-prod-notify')?.value) || 7,
-        importancia: document.getElementById('m-prod-importancia')?.value || 'media',
-        criadoEm: agora,
-        modificadoEm: agora
-      });
+      ST.data.produtosCiclo.push({ id: Date.now(), historico: [], criadoEm: agora, ...dados });
     }
     STORAGE.save();
     closeModal(null, 'modal-produto');
@@ -4971,6 +5077,62 @@ const CICLOPROD = {
       ST.data.produtosCiclo = (ST.data.produtosCiclo||[]).filter(p => p.id !== id);
       STORAGE.save(); this.render();
     });
+  },
+
+  abrirHistorico(id, tipoPresel) {
+    const p = (ST.data.produtosCiclo||[]).find(x => x.id === id); if (!p) return;
+    document.getElementById('m-hist-prod-id').value = id;
+    const titulo = document.getElementById('modal-hist-titulo');
+    if (titulo) titulo.textContent = `Histórico — ${p.nome}`;
+    const hist = p.historico || [];
+    const lista = document.getElementById('modal-hist-lista');
+    if (lista) {
+      if (!hist.length) {
+        lista.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem;text-align:center;padding:12px 0">Nenhum registro ainda</div>';
+      } else {
+        const tipoLabel = { uso:'Uso', compra:'Compra', ajuste:'Ajuste' };
+        const tipoCls = { uso:'prod-status-expiring', compra:'prod-status-ok', ajuste:'prod-cat-tag' };
+        const u = p.unidade || 'unidade';
+        lista.innerHTML = [...hist].reverse().map(h => {
+          const plural = h.qtd !== 1 && u === 'unidade' ? 's' : '';
+          return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+            <span class="prod-status-badge ${tipoCls[h.tipo]||'prod-cat-tag'}" style="font-size:.7rem;padding:2px 8px">${tipoLabel[h.tipo]||h.tipo}</span>
+            <span style="font-size:.82rem;font-weight:500">${h.qtd} ${u}${plural}</span>
+            <span style="font-size:.75rem;color:var(--text-muted);margin-left:auto">${formatarData(h.data)}</span>
+            ${h.obs ? `<span style="font-size:.72rem;color:var(--text-muted)">${escHtml(h.obs)}</span>` : ''}
+          </div>`;
+        }).join('');
+      }
+    }
+    const sel = document.getElementById('m-hist-tipo');
+    if (sel && tipoPresel) sel.value = tipoPresel;
+    const mQtd = document.getElementById('m-hist-qtd');
+    const mObs = document.getElementById('m-hist-obs');
+    if (mQtd) mQtd.value = '';
+    if (mObs) mObs.value = '';
+    document.getElementById('modal-historico-produto')?.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  },
+
+  salvarMovimento() {
+    const id = parseInt(document.getElementById('m-hist-prod-id')?.value);
+    const tipo = document.getElementById('m-hist-tipo')?.value;
+    const qtd = parseInt(document.getElementById('m-hist-qtd')?.value);
+    const obs = document.getElementById('m-hist-obs')?.value.trim() || '';
+    if (!qtd || qtd <= 0) { showToast('Informe a quantidade', 'erro'); return; }
+    const p = (ST.data.produtosCiclo||[]).find(x => x.id === id); if (!p) return;
+    p.historico = p.historico || [];
+    p.historico.push({ data: ST.hoje, tipo, qtd, obs });
+    if (p.qtdEstoque !== null && p.qtdEstoque !== undefined) {
+      if (tipo === 'uso') p.qtdEstoque = Math.max(0, p.qtdEstoque - qtd);
+      else if (tipo === 'compra') p.qtdEstoque += qtd;
+      else p.qtdEstoque = qtd;
+    }
+    p.modificadoEm = new Date().toISOString();
+    STORAGE.save();
+    closeModal(null, 'modal-historico-produto');
+    this.render();
+    showToast('Registrado!', 'ok');
   },
 
   checkNotificacoes() {
@@ -4988,7 +5150,10 @@ const CICLOPROD = {
       let msg = '';
       if (st === 'expired') msg = `Seu ${p.nome} está vencido`;
       else if (st === 'expiring') msg = dias === 0 ? `Seu ${p.nome} vence hoje` : `Seu ${p.nome} vence em ${dias} dia${dias!==1?'s':''}`;
-      else msg = `Seu ${p.nome} está acabando`;
+      else if (st === 'running_out') msg = `Seu ${p.nome} está acabando`;
+      else if (st === 'sem_estoque') msg = `${p.nome} está sem estoque`;
+      else if (st === 'estoque_baixo') msg = `Estoque baixo: ${p.nome} (${p.qtdEstoque} ${p.unidade||'unidade'}s)`;
+      if (!msg) return;
       setTimeout(() => {
         showToast(msg, 'aviso');
         NOTIF.mostrar('🧴 ELAR', msg, `ela-prod-${p.id}`);
