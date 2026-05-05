@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="ELAR">
 <link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Playfair+Display:ital,wght@0,500;1,500&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -846,12 +847,11 @@ select.input { cursor: pointer; }
 .tarefa-row .tr-text { flex: 1; font-size: .88rem; }
 .tarefa-row .tr-text.done { text-decoration: line-through; color: var(--text-muted); }
 .tarefa-row .tr-badge { }
-.tr-del {
+.tr-del, .tr-edit, .tr-hist {
   position: relative;
   cursor: pointer;
 }
-.tr-del::after {
-  content: 'Excluir';
+.tr-del::after, .tr-edit::after, .tr-hist::after {
   position: absolute;
   bottom: calc(100% + 5px);
   left: 50%;
@@ -868,7 +868,10 @@ select.input { cursor: pointer; }
   transition: opacity var(--transition);
   z-index: 200;
 }
-.tr-del:hover::after { opacity: 1; }
+.tr-del::after  { content: 'Excluir'; }
+.tr-edit::after { content: 'Editar'; }
+.tr-hist::after { content: 'Histórico'; }
+.tr-del:hover::after, .tr-edit:hover::after, .tr-hist:hover::after { opacity: 1; }
 .tarefa-row .tr-del {
   opacity: 0;
   font-size: .9rem;
@@ -2699,6 +2702,19 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
         </select>
       </div>
       <div class="field"><label>Marca <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label><input class="input" id="m-prod-marca" placeholder="Ex: Neutrogena, Himalaya..."></div>
+      <div class="field">
+        <label>Volume ou massa <span style="font-weight:400;color:var(--text-muted)">(opcional)</span></label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="input" id="m-prod-volume" type="number" min="0" step="any" placeholder="Ex: 200" style="flex:1">
+          <select class="input" id="m-prod-volume-unidade" style="flex:1">
+            <option value="ml">ml</option>
+            <option value="g">g</option>
+            <option value="kg">kg</option>
+            <option value="L">L</option>
+            <option value="oz">oz</option>
+          </select>
+        </div>
+      </div>
       <details class="field-group-optional" id="m-prod-estoque-details">
         <summary>Estoque</summary>
         <div class="field">
@@ -4967,7 +4983,8 @@ const CICLOPROD = {
       const tempo = this._tempoTexto(p);
       const estoqueTexto = this._estoqueTexto(p);
       const estoqueCls = this._estoqueCls(p);
-      const meta = [p.marca, tempo].filter(Boolean).join(' · ');
+      const volumeStr = p.volume ? `${p.volume}${p.volumeUnidade || 'ml'}` : null;
+      const meta = [volumeStr, p.marca, tempo].filter(Boolean).join(' · ');
       return `<div class="prod-item">
         <div class="prod-item-main">
           <div class="prod-item-nome">${escHtml(p.nome)}</div>
@@ -4981,9 +4998,9 @@ const CICLOPROD = {
           <button class="prod-quick-btn" onclick="CICLOPROD.abrirHistorico(${p.id},'compra')">+ Comprar</button>
         </div>
         <div class="prod-actions">
-          <span class="tr-del" onclick="CICLOPROD.abrirHistorico(${p.id})" title="Histórico" style="cursor:pointer;font-size:.9rem">📋</span>
-          <span class="tr-del" onclick="CICLOPROD.abrirModal(${p.id})" title="Editar" style="cursor:pointer;font-size:.9rem">✏️</span>
-          <span class="tr-del" onclick="CICLOPROD.excluir(${p.id})">🗑️</span>
+          <span class="tr-hist" onclick="CICLOPROD.abrirHistorico(${p.id})" style="cursor:pointer;font-size:.9rem">📋</span>
+          <span class="tr-edit" onclick="CICLOPROD.abrirModal(${p.id})" style="cursor:pointer;font-size:.9rem">✏️</span>
+          <span class="tr-del" onclick="CICLOPROD.excluir(${p.id})" style="font-size:.9rem">🗑️</span>
         </div>
       </div>`;
     }).join('');
@@ -5003,6 +5020,8 @@ const CICLOPROD = {
     const mQtd = document.getElementById('m-prod-qtd');
     const mQtdMin = document.getElementById('m-prod-qtdmin');
     const mUnidade = document.getElementById('m-prod-unidade');
+    const mVolume = document.getElementById('m-prod-volume');
+    const mVolumeUnidade = document.getElementById('m-prod-volume-unidade');
     const detailsEst = document.getElementById('m-prod-estoque-details');
     const titulo = document.getElementById('modal-produto-titulo');
 
@@ -5014,6 +5033,8 @@ const CICLOPROD = {
       if (mNome) mNome.value = p.nome || '';
       if (mCat) mCat.value = p.categoria || 'Skincare';
       if (mMarca) mMarca.value = p.marca || '';
+      if (mVolume) mVolume.value = p.volume || '';
+      if (mVolumeUnidade) mVolumeUnidade.value = p.volumeUnidade || 'ml';
       if (mVal) mVal.value = p.dataValidade || '';
       if (mAb) mAb.value = p.dataAbertura || '';
       if (mDur) mDur.value = p.duracaoEstimada || '';
@@ -5026,11 +5047,12 @@ const CICLOPROD = {
     } else {
       if (titulo) titulo.textContent = 'Novo Produto';
       if (mId) mId.value = '';
-      [mNome, mMarca, mVal, mAb, mDur, mQtd, mQtdMin].forEach(el => { if(el) el.value = ''; });
+      [mNome, mMarca, mVolume, mVal, mAb, mDur, mQtd, mQtdMin].forEach(el => { if(el) el.value = ''; });
       if (mCat) mCat.value = 'Skincare';
       if (mNot) { mNot.value = 7; if (mDaysLbl) mDaysLbl.textContent = '7'; }
       if (mImp) mImp.value = 'media';
       if (mUnidade) mUnidade.value = 'unidade';
+      if (mVolumeUnidade) mVolumeUnidade.value = 'ml';
       if (detailsEst) detailsEst.removeAttribute('open');
     }
     document.getElementById('modal-produto')?.classList.add('open');
@@ -5045,11 +5067,14 @@ const CICLOPROD = {
     const qtdRaw = document.getElementById('m-prod-qtd')?.value;
     const qtdEstoque = qtdRaw !== '' ? (parseInt(qtdRaw) >= 0 ? parseInt(qtdRaw) : null) : null;
     const qtdMinRaw = document.getElementById('m-prod-qtdmin')?.value;
+    const volumeRaw = document.getElementById('m-prod-volume')?.value;
     ST.data.produtosCiclo = ST.data.produtosCiclo || [];
     const dados = {
       nome,
       categoria: document.getElementById('m-prod-categoria')?.value || 'Skincare',
       marca: document.getElementById('m-prod-marca')?.value.trim() || '',
+      volume: volumeRaw !== '' ? (parseFloat(volumeRaw) || null) : null,
+      volumeUnidade: document.getElementById('m-prod-volume-unidade')?.value || 'ml',
       dataValidade: document.getElementById('m-prod-validade')?.value || '',
       dataAbertura: document.getElementById('m-prod-abertura')?.value || '',
       duracaoEstimada: parseInt(document.getElementById('m-prod-duracao')?.value) || null,
