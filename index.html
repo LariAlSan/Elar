@@ -4419,8 +4419,8 @@ const GDRIVE = {
         localStorage.setItem(STORAGE.KEY, JSON.stringify(ST.data));
         HOME.render(); TAREFAS.render(); HABITOS.render();
         updateNavBadgeTarefas(); BEMESTAR.carregar(); CORPO.carregar();
-        PRATICO.renderListas(); PRATICO.renderLembretes(); VINCULOS.render();
-        OBJETIVOS.render(); CHECKIN.carregar(); CICLO.render();
+        PRATICO.renderListas(); PRATICO.renderLembretes(); CICLOPROD.render();
+        VINCULOS.render(); OBJETIVOS.render(); CHECKIN.carregar(); CICLO.render();
         buildHumorCalendar(); PADROES.renderInsights();
         showToast('Dados sincronizados do Drive ✓','ok');
         return;
@@ -5735,7 +5735,12 @@ function init() {
 
   setTimeout(() => { if (GCAL.TOKEN && !GCAL._isValid()) GCAL.silentRefresh(); }, 2000);
   setTimeout(() => { if (GFIT.TOKEN && !GFIT._isValid()) GFIT.silentRefresh(); }, 3000);
-  setTimeout(() => { if (GDRIVE.TOKEN && !GDRIVE._isValid()) GDRIVE.silentRefresh(); }, 4000);
+  setTimeout(() => {
+    if (GDRIVE.TOKEN) {
+      if (GDRIVE._isValid()) GDRIVE.sync();
+      else GDRIVE.silentRefresh();
+    }
+  }, 4000);
 
   const lastPage = localStorage.getItem('ela-page');
   if (lastPage && PAGES.includes(lastPage) && lastPage !== 'home') nav(lastPage);
