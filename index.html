@@ -2951,7 +2951,7 @@ const DEF = {
 };
 const ST = { get hoje(){ return hoje(); }, data: JSON.parse(JSON.stringify(DEF)) };
 
-/* ─── STORAGE (localStorage) ─── */
+/* ─── STORAGE (IndexedDB + File System) ─── */
 function deepMerge(def, stored) {
   const out = JSON.parse(JSON.stringify(def));
   for (const k of Object.keys(stored)) {
@@ -2968,20 +2968,64 @@ function deepMerge(def, stored) {
 }
 
 const STORAGE = {
-  KEY: 'ela-data',
-  load() {
-    try {
-      const raw = localStorage.getItem(this.KEY);
-      if (raw) ST.data = deepMerge(DEF, JSON.parse(raw));
-    } catch(e) { console.warn('STORAGE.load:', e); }
+  K: 'ela-data',
+  DB: null,
+  async _db() {
+    if (this.DB) return this.DB;
+    return new Promise((res, rej) => {
+      const req = indexedDB.open('elar4db', 1);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('data')) db.createObjectStore('data');
+        if (!db.objectStoreNames.contains('sync')) db.createObjectStore('sync');
+      };
+      req.onsuccess = e => { this.DB = e.target.result; res(this.DB); };
+      req.onerror = () => rej(req.error);
+    });
   },
-  save() {
+  async _idbGet(store, key) {
+    const db = await this._db();
+    return new Promise((res, rej) => {
+      const req = db.transaction(store, 'readonly').objectStore(store).get(key);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    });
+  },
+  async _idbSet(store, key, val) {
+    const db = await this._db();
+    return new Promise((res, rej) => {
+      const req = db.transaction(store, 'readwrite').objectStore(store).put(val, key);
+      req.onsuccess = () => res();
+      req.onerror = () => rej(req.error);
+    });
+  },
+  async load() {
+    try {
+      let saved = await this._idbGet('data', 'main');
+      if (!saved) {
+        const ls = localStorage.getItem(this.K);
+        if (ls) {
+          saved = JSON.parse(ls);
+          await this._idbSet('data', 'main', saved);
+          localStorage.removeItem(this.K);
+        }
+      }
+      ST.data = saved ? deepMerge(DEF, saved) : JSON.parse(JSON.stringify(DEF));
+    } catch {
+      try {
+        const r = localStorage.getItem(this.K);
+        ST.data = r ? deepMerge(DEF, JSON.parse(r)) : JSON.parse(JSON.stringify(DEF));
+      } catch { ST.data = JSON.parse(JSON.stringify(DEF)); }
+    }
+    await this._syncFromFile();
+  },
+  async save() {
     try {
       ST.data.meta.lastUpdated = new Date().toISOString();
-      localStorage.setItem(this.KEY, JSON.stringify(ST.data));
-      clearTimeout(this._driveTimer);
-      this._driveTimer = setTimeout(() => GDRIVE.upload(), 2500);
-    } catch(e) { console.warn('STORAGE.save:', e); }
+      await this._idbSet('data', 'main', ST.data);
+    } catch { localStorage.setItem(this.K, JSON.stringify(ST.data)); }
+    this._syncToFile();
+    GDRIVE.autoSave();
   },
   export() {
     const blob = new Blob([JSON.stringify(ST.data,null,2)], { type:'application/json' });
@@ -2992,12 +3036,76 @@ const STORAGE = {
     const file = input?.files?.[0];
     if (!file) return;
     const r = new FileReader();
-    r.onload = e => {
-      try { ST.data = deepMerge(DEF, JSON.parse(e.target.result)); STORAGE.save(); location.reload(); }
+    r.onload = async e => {
+      try { ST.data = deepMerge(DEF, JSON.parse(e.target.result)); await STORAGE.save(); location.reload(); }
       catch { showToast('Arquivo inválido','erro'); }
     };
     r.readAsText(file);
     input.value = '';
+  },
+  async linkFile() {
+    if (!window.showOpenFilePicker) { showToast('Seu browser não suporta File System API. Use Chrome ou Edge.','erro'); return; }
+    try {
+      let handle;
+      try {
+        [handle] = await window.showOpenFilePicker({ types:[{ description:'JSON', accept:{'application/json':['.json']} }], multiple:false });
+      } catch {
+        handle = await window.showSaveFilePicker({ suggestedName:'ela-sync.json', types:[{ description:'JSON', accept:{'application/json':['.json']} }] });
+      }
+      await this._idbSet('sync', 'fileHandle', handle);
+      await this._syncToFile();
+      this._updSyncStatus(handle.name);
+      showToast('Arquivo vinculado: ' + handle.name, 'ok');
+    } catch(e) { if (e.name !== 'AbortError') showToast('Erro ao vincular arquivo','erro'); }
+  },
+  async unlinkFile() {
+    try { await this._idbSet('sync', 'fileHandle', null); } catch {}
+    this._updSyncStatus(null);
+    showToast('Arquivo desvinculado','ok');
+  },
+  async _getHandle() {
+    try { return await this._idbGet('sync', 'fileHandle'); } catch { return null; }
+  },
+  async _syncToFile() {
+    const handle = await this._getHandle();
+    if (!handle) return;
+    try {
+      let perm = await handle.queryPermission({ mode:'readwrite' });
+      if (perm !== 'granted') perm = await handle.requestPermission({ mode:'readwrite' });
+      if (perm !== 'granted') { this._updSyncStatus(handle.name, true); return; }
+      const w = await handle.createWritable();
+      await w.write(JSON.stringify(ST.data, null, 2));
+      await w.close();
+      this._updSyncStatus(handle.name);
+    } catch { this._updSyncStatus(handle.name, true); }
+  },
+  async _syncFromFile() {
+    const handle = await this._getHandle();
+    if (!handle) { this._updSyncStatus(null); return; }
+    try {
+      let perm = await handle.queryPermission({ mode:'readwrite' });
+      if (perm !== 'granted') { this._updSyncStatus(handle.name, true); return; }
+      const file = await handle.getFile();
+      const fileData = JSON.parse(await file.text());
+      const fileTime = new Date(fileData.meta?.lastUpdated || 0);
+      const localTime = new Date(ST.data.meta?.lastUpdated || 0);
+      if (fileTime > localTime) {
+        ST.data = deepMerge(DEF, fileData);
+        await this._idbSet('data', 'main', ST.data);
+        showToast('Dados sincronizados do arquivo!','ok');
+      }
+      this._updSyncStatus(handle.name);
+    } catch { this._updSyncStatus(handle.name, true); }
+  },
+  _updSyncStatus(name, needsPerm = false) {
+    const el = document.getElementById('ela-sync-status');
+    if (!el) return;
+    if (!name) { el.innerHTML = ''; return; }
+    if (needsPerm) {
+      el.innerHTML = `<div class="cfg-conta-row"><span style="color:var(--warning);cursor:pointer" onclick="STORAGE.linkFile()">⚠️ ${name} — clique p/ reconectar</span></div>`;
+    } else {
+      el.innerHTML = `<div class="cfg-conta-row"><span style="color:var(--success)">✅ Arquivo: ${name}</span> <button class="btn btn-ghost btn-sm" onclick="STORAGE.unlinkFile()">Desvincular</button></div>`;
+    }
   }
 };
 
@@ -4272,162 +4380,212 @@ const GFIT = {
 /* ─── GDRIVE ─── */
 const GDRIVE = {
   CLIENT_ID: '218452083023-3cc5l1fbc2o82c85639snh96a5nsekvi.apps.googleusercontent.com',
-  TOKEN: null, _client: null, _exp: 0, _refreshTimer: null,
-  SCOPE: 'https://www.googleapis.com/auth/drive.appdata',
+  SCOPE: 'https://www.googleapis.com/auth/drive.file email profile',
+  _tok: null, _tokExp: 0, _email: null, _fileId: null,
+  _tc: null, _timer: null, _dirty: false,
+  _pollInterval: null, _refreshTimer: null, _syncing: false, _loading: false,
+  get TOKEN() { return this._tok; },
 
-  init() {
-    const s = localStorage.getItem('ela-gdrive-token');
-    if (s) this.TOKEN = s;
-    this._exp = parseInt(localStorage.getItem('ela-gdrive-token-exp') || '0');
-    if (this.TOKEN && this._exp > Date.now()) {
-      const delay = this._exp - Date.now() - 5 * 60 * 1000;
-      if (delay > 0) this._scheduleRefresh(delay);
+  _ok() { return !!this._tok && Date.now() < this._tokExp; },
+
+  async init() {
+    const saved = await STORAGE._idbGet('sync', 'gdrive').catch(() => null);
+    if (saved?.email) {
+      this._email = saved.email;
+      this._fileId = saved.fileId || null;
+      if (saved.token && saved.tokenExp && Date.now() < saved.tokenExp) {
+        this._tok = saved.token;
+        this._tokExp = saved.tokenExp;
+      }
+    } else {
+      const legacyToken = localStorage.getItem('ela-gdrive-token');
+      const legacyExp = parseInt(localStorage.getItem('ela-gdrive-token-exp') || '0');
+      if (legacyToken && legacyExp > Date.now()) {
+        this._tok = legacyToken;
+        this._tokExp = legacyExp;
+        this._fileId = localStorage.getItem('ela-gdrive-fileid') || null;
+      }
+      localStorage.removeItem('ela-gdrive-token');
+      localStorage.removeItem('ela-gdrive-token-exp');
+      localStorage.removeItem('ela-gdrive-fileid');
     }
+
+    const waitGIS = () => {
+      if (window.google?.accounts?.oauth2) {
+        this._initTC();
+        if (this._ok()) this._syncSilent();
+        else if (this._email) try { this._tc.requestAccessToken({ prompt:'' }); } catch {}
+      } else { setTimeout(waitGIS, 300); }
+    };
+    waitGIS();
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        if (this._ok()) this._syncSilent();
+        else if (this._email && this._tc) try { this._tc.requestAccessToken({ prompt:'' }); } catch {}
+      }
+    });
+
+    window.addEventListener('online', () => { if (this._ok()) this._syncSilent(); });
+
+    this._pollInterval = setInterval(() => { if (this._ok()) this._syncSilent(); }, 60000);
   },
-  _isValid() { return !!(this.TOKEN && this._exp > Date.now() + 60000); },
-  _scheduleRefresh(ms) { clearTimeout(this._refreshTimer); this._refreshTimer = setTimeout(() => this.silentRefresh(), ms); },
-  _saveToken(r) {
-    this.TOKEN = r.access_token;
-    const exp = Date.now() + ((r.expires_in || 3600) * 1000);
-    this._exp = exp;
-    localStorage.setItem('ela-gdrive-token', this.TOKEN);
-    localStorage.setItem('ela-gdrive-token-exp', String(exp));
-    this._scheduleRefresh(Math.max(((r.expires_in || 3600) - 300) * 1000, 0));
+
+  _initTC() {
+    if (this._tc || !window.google?.accounts?.oauth2) return;
+    this._tc = google.accounts.oauth2.initTokenClient({
+      client_id: this.CLIENT_ID, scope: this.SCOPE,
+      callback: async resp => {
+        if (resp.error) { console.error('GDRIVE token error:', resp.error); CONFIG._renderConta(); return; }
+        this._tok = resp.access_token;
+        this._tokExp = Date.now() + (resp.expires_in - 60) * 1000;
+        clearTimeout(this._refreshTimer);
+        this._refreshTimer = setTimeout(() => {
+          if (this._tc) try { this._tc.requestAccessToken({ prompt:'' }); } catch {}
+        }, (resp.expires_in - 120) * 1000);
+        if (!this._email) {
+          try {
+            const u = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers:{ Authorization:`Bearer ${this._tok}` } }).then(r => r.json());
+            this._email = u.email;
+          } catch {}
+        }
+        await STORAGE._idbSet('sync', 'gdrive', { email:this._email, fileId:this._fileId, token:this._tok, tokenExp:this._tokExp }).catch(() => {});
+        localStorage.setItem('ela-gdrive-prompt-date', new Date().toISOString().slice(0,10));
+        CONFIG._renderConta();
+        await this._syncSilent();
+      }
+    });
   },
 
   signIn() {
     if (!window.google) { showToast('Google não carregado — aguarde e tente novamente','erro'); return; }
-    if (!this._client) this._client = google.accounts.oauth2.initTokenClient({
-      client_id: this.CLIENT_ID, scope: this.SCOPE,
-      callback: async resp => {
-        if (resp.error) { if (resp.error !== 'popup_closed_by_user') showToast('Erro ao conectar Drive: ' + resp.error,'erro'); return; }
-        this._saveToken(resp);
-        localStorage.setItem('ela-gdrive-prompt-date', new Date().toISOString().slice(0,10));
-        showToast('Google Drive conectado ✓','ok');
-        CONFIG._renderConta();
-        await this.sync();
-      }
-    });
-    this._client.requestAccessToken();
+    this._initTC();
+    if (this._tc) this._tc.requestAccessToken();
   },
 
-  signOut() {
-    this.TOKEN = null; clearTimeout(this._refreshTimer);
-    localStorage.removeItem('ela-gdrive-token'); localStorage.removeItem('ela-gdrive-token-exp');
-    localStorage.removeItem('ela-gdrive-fileid');
+  async signOut() {
+    this._tok = null; this._tokExp = 0; this._email = null; this._fileId = null;
+    clearTimeout(this._refreshTimer); clearInterval(this._pollInterval);
+    await STORAGE._idbSet('sync', 'gdrive', null).catch(() => {});
     showToast('Google Drive desconectado','ok');
     CONFIG._renderConta();
   },
 
   silentRefresh() {
-    if (!window.google || !localStorage.getItem('ela-gdrive-token')) return;
-    if (!this._client) this._client = google.accounts.oauth2.initTokenClient({
-      client_id: this.CLIENT_ID, scope: this.SCOPE,
-      callback: async resp => {
-        if (resp.error) {
-          const today = new Date().toISOString().slice(0,10);
-          if (this.TOKEN && localStorage.getItem('ela-gdrive-prompt-date') !== today) {
-            this.TOKEN = null;
-            localStorage.removeItem('ela-gdrive-token');
-            showToast('Reconecte o Google Drive em Configuração ⚙️','aviso');
-            localStorage.setItem('ela-gdrive-prompt-date', today);
-            CONFIG._renderConta();
-          }
-          return;
-        }
-        this._saveToken(resp);
-        CONFIG._renderConta();
-        await this.sync();
-      }
-    });
-    this._client.requestAccessToken({ prompt: '' });
+    if (!window.google) return;
+    this._initTC();
+    if (this._tc) try { this._tc.requestAccessToken({ prompt:'' }); } catch {}
   },
 
-  async _getFileId() {
-    const cached = localStorage.getItem('ela-gdrive-fileid');
-    if (cached) return cached;
-    const r = await fetch(
-      "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'ela-data.json'&fields=files(id)",
-      { headers: { Authorization: 'Bearer ' + this.TOKEN } }
+  async _getOrCreateFile() {
+    if (this._fileId) return this._fileId;
+    const searchResp = await fetch(
+      "https://www.googleapis.com/drive/v3/files?q=name%3D'ela-data.json'%20and%20trashed%3Dfalse&orderBy=modifiedTime+desc&fields=files(id)",
+      { headers:{ Authorization:`Bearer ${this._tok}` } }
     );
-    if (!r.ok) {
-      await r.json().catch(() => {});
-      const msg = r.status === 403 ? 'Drive: ative a Google Drive API no Cloud Console' : `Erro ${r.status} Google Drive`;
-      showToast(msg, 'erro');
-      return null;
+    const r = await searchResp.json();
+    if (r.error) { console.error('GDRIVE search error:', r.error); return null; }
+    if (r.files?.length) {
+      this._fileId = r.files[0].id;
+    } else {
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify({ name:'ela-data.json', mimeType:'application/json' })], { type:'application/json' }));
+      form.append('file', new Blob([JSON.stringify(ST.data, null, 2)], { type:'application/json' }));
+      const createResp = await fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+        { method:'POST', headers:{ Authorization:`Bearer ${this._tok}` }, body:form }
+      );
+      const c = await createResp.json();
+      if (c.error) { console.error('GDRIVE create error:', c.error); return null; }
+      this._fileId = c.id;
+      showToast('Arquivo criado no Google Drive ✓','ok');
     }
-    const { files } = await r.json();
-    if (files?.length) { localStorage.setItem('ela-gdrive-fileid', files[0].id); return files[0].id; }
-    return null;
+    await STORAGE._idbSet('sync', 'gdrive', { email:this._email, fileId:this._fileId, token:this._tok, tokenExp:this._tokExp }).catch(() => {});
+    return this._fileId;
   },
 
-  async upload() {
-    if (!this.TOKEN) return;
+  autoSave() {
+    this._dirty = true;
+    if (!this._ok()) return;
+    clearTimeout(this._timer);
+    this._timer = setTimeout(() => this._doSave(ST.data), 1000);
+  },
+
+  async _doSave(data) {
+    if (!this._ok()) return;
+    const _vazio = !Object.keys(data.diarios || {}).length &&
+                   !(data.tarefas || []).length &&
+                   !(data.habitos || []).length &&
+                   !(data.ciclos || []).length;
+    if (_vazio) { console.warn('GDRIVE: _doSave bloqueado — dados vazios não sobrescrevem backup'); return; }
     try {
-      const json = JSON.stringify(ST.data);
-      const fileId = await this._getFileId();
-      if (fileId) {
-        const r = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
-          method: 'PATCH',
-          headers: { Authorization: 'Bearer ' + this.TOKEN, 'Content-Type': 'application/json' },
-          body: json
-        });
-        if (r.status === 401) { this.signOut(); return; }
-        if (!r.ok) { showToast(`Erro ${r.status} ao salvar no Drive`, 'erro'); return; }
-      } else {
-        if (!fileId && fileId !== null) return;
-        const form = new FormData();
-        form.append('metadata', new Blob([JSON.stringify({ name:'ela-data.json', parents:['appDataFolder'] })], { type:'application/json' }));
-        form.append('file', new Blob([json], { type:'application/json' }));
-        const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-          method: 'POST', headers: { Authorization: 'Bearer ' + this.TOKEN }, body: form
-        });
-        if (r.status === 401) { this.signOut(); return; }
-        if (!r.ok) { showToast(`Erro ${r.status} ao criar arquivo no Drive`, 'erro'); return; }
-        const { id } = await r.json();
-        localStorage.setItem('ela-gdrive-fileid', id);
-      }
-    } catch(e) { console.warn('GDRIVE.upload:', e); showToast('Falha ao sincronizar com Drive', 'aviso'); }
+      const id = await this._getOrCreateFile();
+      if (!id) { showToast('Falha ao salvar no Drive','erro'); return; }
+      const r = await fetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`,
+        { method:'PATCH', headers:{ Authorization:`Bearer ${this._tok}`, 'Content-Type':'application/json' }, body:JSON.stringify(data, null, 2) }
+      );
+      if (r.status === 401) { await this.signOut(); return; }
+      if (!r.ok) { showToast(`Erro ${r.status} ao salvar no Drive`,'erro'); }
+      else this._dirty = false;
+    } catch(e) { console.warn('GDRIVE._doSave:', e); }
   },
 
-  async download() {
-    if (!this.TOKEN) return null;
+  async _doLoad() {
+    if (!this._ok() || this._loading) return false;
+    this._loading = true;
     try {
-      const fileId = await this._getFileId();
-      if (!fileId) return null;
-      const r = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-        headers: { Authorization: 'Bearer ' + this.TOKEN }
-      });
-      if (r.status === 401) { this.signOut(); return null; }
-      if (!r.ok) {
-        const msg = r.status === 403 ? 'Drive: ative a Google Drive API no Cloud Console' : `Erro ${r.status} Google Drive`;
-        showToast(msg, 'erro');
-        return null;
+      if (this._timer !== null) { clearTimeout(this._timer); this._timer = null; await this._doSave(ST.data); }
+      const id = await this._getOrCreateFile();
+      if (!id) return false;
+      const resp = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${id}?alt=media`,
+        { headers:{ Authorization:`Bearer ${this._tok}` } }
+      );
+      if (resp.status === 401) { await this.signOut(); return false; }
+      if (!resp.ok) {
+        const msg = resp.status === 403 ? 'Drive: ative a Google Drive API no Cloud Console' : `Erro ${resp.status} Google Drive`;
+        showToast(msg,'erro'); return false;
       }
-      return await r.json();
-    } catch(e) { return null; }
-  },
-
-  async sync() {
-    if (!this.TOKEN) return;
-    const driveData = await this.download();
-    if (driveData) {
-      const localTs = ST.data.meta?.lastUpdated || '';
-      const driveTs = driveData.meta?.lastUpdated || '';
-      if (driveTs > localTs) {
+      const driveData = await resp.json();
+      const dt = new Date(driveData.meta?.lastUpdated || 0);
+      const lt = new Date(ST.data.meta?.lastUpdated || 0);
+      if (dt > lt) {
         ST.data = deepMerge(DEF, driveData);
-        localStorage.setItem(STORAGE.KEY, JSON.stringify(ST.data));
+        await STORAGE._idbSet('data', 'main', ST.data).catch(() => {});
         HOME.render(); TAREFAS.render(); HABITOS.render();
         updateNavBadgeTarefas(); BEMESTAR.carregar(); CORPO.carregar();
         PRATICO.renderListas(); PRATICO.renderLembretes(); CICLOPROD.render();
         VINCULOS.render(); OBJETIVOS.render(); CHECKIN.carregar(); CICLO.render();
         buildHumorCalendar(); PADROES.renderInsights();
         showToast('Dados sincronizados do Drive ✓','ok');
-        return;
+        this._dirty = false;
+        return true;
       }
-    }
-    await this.upload();
-    if (this.TOKEN) showToast('Dados salvos no Drive ✓', 'ok');
+      if (this._dirty || lt > dt) {
+        const _vazio = !Object.keys(ST.data.diarios || {}).length &&
+                       !(ST.data.tarefas || []).length &&
+                       !(ST.data.habitos || []).length &&
+                       !(ST.data.ciclos || []).length;
+        if (!_vazio) await this._doSave(ST.data);
+      }
+      return false;
+    } catch(e) { console.warn('GDRIVE._doLoad:', e); } finally { this._loading = false; }
+    return false;
+  },
+
+  async _syncSilent() {
+    if (!this._ok() || this._syncing) return;
+    this._syncing = true;
+    try { await this._doLoad(); } finally { this._syncing = false; }
+  },
+
+  async syncNow() {
+    if (!this._ok()) { showToast('Reconecte o Google Drive primeiro','erro'); return; }
+    showToast('Sincronizando...','ok');
+    this._dirty = true;
+    await this._doLoad();
+    showToast('Drive sincronizado ✓','ok');
   }
 };
 
@@ -5642,10 +5800,14 @@ const CONFIG = {
     const gfitStatus = GFIT?.TOKEN
       ? `<span style="color:var(--success)">✓</span> <strong>Google Fit</strong> <span style="color:var(--text-muted);font-size:.78rem">conectado</span>`
       : `<span style="color:var(--text-muted)">Google Fit / Samsung Health</span> <button class="btn btn-ghost btn-sm" onclick="GFIT.signIn()">Conectar</button>`;
-    const gdriveStatus = GDRIVE?.TOKEN
-      ? `<span style="color:var(--success)">✓</span> <strong>Google Drive</strong> <span style="color:var(--text-muted);font-size:.78rem">sincronizando</span> <button class="btn btn-ghost btn-sm" onclick="GDRIVE.sync()" title="Sincronizar agora">↻</button> <button class="btn btn-ghost btn-sm" onclick="GDRIVE.signOut()">Desconectar</button>`
+    const gdriveStatus = GDRIVE?._ok()
+      ? `<span style="color:var(--success)">✓</span> <strong>Google Drive</strong> <span style="color:var(--text-muted);font-size:.78rem">sincronizando</span> <button class="btn btn-ghost btn-sm" onclick="GDRIVE.syncNow()" title="Sincronizar agora">↻</button> <button class="btn btn-ghost btn-sm" onclick="GDRIVE.signOut()">Desconectar</button>`
       : `<span style="color:var(--text-muted)">Google Drive</span> <button class="btn btn-ghost btn-sm" onclick="GDRIVE.signIn()">Conectar</button>`;
-    el.innerHTML = `<div class="cfg-conta-row">${gcalStatus}</div><div class="cfg-conta-row">${gfitStatus}</div><div class="cfg-conta-row">${gdriveStatus}</div>`;
+    const fileSyncStatus = window.showOpenFilePicker
+      ? `<div class="cfg-conta-row" id="ela-sync-status"></div><div class="cfg-conta-row"><button class="btn btn-ghost btn-sm" onclick="STORAGE.linkFile()">📂 Vincular arquivo local</button></div>`
+      : '';
+    el.innerHTML = `<div class="cfg-conta-row">${gcalStatus}</div><div class="cfg-conta-row">${gfitStatus}</div><div class="cfg-conta-row">${gdriveStatus}</div>${fileSyncStatus}`;
+    STORAGE._getHandle().then(h => h && STORAGE._updSyncStatus(h.name));
   },
 
   selectIcon(ic) {
@@ -5714,8 +5876,8 @@ function clearCache() {
 }
 
 /* ─── Init ─── */
-function init() {
-  try { STORAGE.load(); } catch(e) { console.error('STORAGE.load:', e); }
+async function init() {
+  try { await STORAGE.load(); } catch(e) { console.error('STORAGE.load:', e); }
   try { DARKMODE.init(); GCAL.init(); initDate(); } catch(e) { console.error('init base:', e); }
 
   try {
@@ -5735,12 +5897,7 @@ function init() {
 
   setTimeout(() => { if (GCAL.TOKEN && !GCAL._isValid()) GCAL.silentRefresh(); }, 2000);
   setTimeout(() => { if (GFIT.TOKEN && !GFIT._isValid()) GFIT.silentRefresh(); }, 3000);
-  setTimeout(() => {
-    if (GDRIVE.TOKEN) {
-      if (GDRIVE._isValid()) GDRIVE.sync();
-      else GDRIVE.silentRefresh();
-    }
-  }, 4000);
+  window.addEventListener('offline', () => showToast('Sem conexão — dados salvos localmente','aviso'));
 
   const lastPage = localStorage.getItem('ela-page');
   if (lastPage && PAGES.includes(lastPage) && lastPage !== 'home') nav(lastPage);
