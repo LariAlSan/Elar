@@ -1915,12 +1915,13 @@ input:checked + .toggle-slider::before { transform:translateX(18px); }
     <div class="sidebar-footer">
       <div class="user-info">
         <div class="avatar">🌸</div>
-        <span class="user-name">Olá, Lari</span>
+        <span class="user-name" data-auth-name>Olá</span>
       </div>
       <button class="btn-icon" id="dark-toggle" onclick="DARKMODE.toggle()" title="Alternar tema">
         ☀️
       </button>
       <button class="btn-icon" id="cache-clear" onclick="clearCache()" title="Atualizar app">↻</button>
+      <button class="btn-icon" onclick="AUTH.logout()" title="Sair da conta" style="color:#7BA7C2;">⏻</button>
     </div>
   </aside>
 
